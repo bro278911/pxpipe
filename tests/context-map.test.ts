@@ -40,8 +40,8 @@ function ctx(p: Partial<ContextMapData> = {}): ContextMapData {
 describe('renderContextMapFragment — cache-aware headline', () => {
   it('says "smaller" only when the cache-weighted baseline actually beats what was sent', () => {
     const html = renderContextMapFragment(ctx({ baselineInputEff: 2000, actualInputEff: 400 }), []);
-    expect(html).toContain('<span class="ctx-big">80%</span> smaller');
-    expect(html).not.toContain('bigger');
+    expect(html).toContain('<span class="ctx-big">80%</span> 較小');
+    expect(html).not.toContain('較大');
   });
 
   it('says "bigger" — not "smaller" — when imaging cost more than the cached text would have (the trust bug)', () => {
@@ -61,12 +61,12 @@ describe('renderContextMapFragment — cache-aware headline', () => {
       }),
       [],
     );
-    expect(html).toContain('<span class="ctx-big">20%</span> bigger');
+    expect(html).toContain('<span class="ctx-big">20%</span> 較大');
     // Must NOT resurrect the cache-blind "smaller" claim in the headline.
-    expect(html).not.toContain('class="ctx-big">76%</span> smaller');
+    expect(html).not.toContain('class="ctx-big">76%</span> 較小');
     // The sub-line still surfaces the raw shrink AND explains why it cost more.
-    expect(html).toContain('76% smaller');
-    expect(html).toContain('cache-read');
+    expect(html).toContain('雖小 76%');
+    expect(html).toContain('快取讀取');
   });
 
   it('headline direction always agrees with the row Saved column (baselineInputEff − actualInputEff)', () => {
@@ -77,9 +77,9 @@ describe('renderContextMapFragment — cache-aware headline', () => {
     for (const [b, a] of cases) {
       const html = renderContextMapFragment(ctx({ baselineInputEff: b, actualInputEff: a }), []);
       if (b - a > 0) {
-        expect(html).toMatch(/ctx-big">\d+%<\/span> smaller/);
+        expect(html).toMatch(/ctx-big">\d+%<\/span> 較小/);
       } else {
-        expect(html).toContain('bigger');
+        expect(html).toContain('較大');
       }
     }
   });
@@ -89,10 +89,10 @@ describe('renderContextMapFragment — cache-aware headline', () => {
       ctx({ haveBaseline: false, baselineInputEff: 0, actualInputEff: 1800, baselineTokens: 7500, realInput: 1800 }),
       [],
     );
-    expect(html).toContain('billing-equivalent input tokens sent');
-    expect(html).not.toContain('% smaller');
-    expect(html).not.toContain('% bigger');
-    expect(html).toContain('no trustworthy text baseline');
+    expect(html).toContain('個計費等價輸入 token');
+    expect(html).not.toContain('</span> 較小');
+    expect(html).not.toContain('</span> 較大');
+    expect(html).toContain('尚無可信的純文字基準');
   });
 });
 
@@ -114,13 +114,13 @@ describe('renderContextMapFragment — cold vs warm honesty', () => {
       [],
     );
     // headline: a real saving is still shown…
-    expect(html).toContain('smaller');
+    expect(html).toContain('較小');
     // …but the text side is plain "text", never "cached text".
-    expect(html).toContain('text would bill as');
-    expect(html).not.toContain('as cached text');
+    expect(html).toContain('純文字會計費');
+    expect(html).not.toContain('快取文字');
     // sub-line tells the truth about the cold turn instead of inventing 0.1×.
-    expect(html).toContain('No warm text cache this turn');
-    expect(html).not.toContain('reads at 0.1×), same basis');
+    expect(html).toContain('本回合沒有溫熱的文字快取');
+    expect(html).not.toContain('（讀取以 0.1× 計），基準與「節省」欄相同');
   });
 
   it('WARM turn (text cached, image also hit): the 0.1× read basis is legitimately claimed', () => {
@@ -135,10 +135,10 @@ describe('renderContextMapFragment — cold vs warm honesty', () => {
       }),
       [],
     );
-    expect(html).toContain('smaller');
-    expect(html).toContain('cached text would bill as');
-    expect(html).toContain('after cache discounts (reads at 0.1×), same basis as the Saved column');
-    expect(html).not.toContain('No warm text cache this turn');
+    expect(html).toContain('較小');
+    expect(html).toContain('快取文字會計費');
+    expect(html).toContain('套用快取折扣後（讀取以 0.1× 計），基準與「節省」欄相同');
+    expect(html).not.toContain('本回合沒有溫熱的文字快取');
   });
 
   it('COLD + bigger: still no fabricated read discount', () => {
@@ -155,11 +155,11 @@ describe('renderContextMapFragment — cold vs warm honesty', () => {
       }),
       [],
     );
-    expect(html).toContain('bigger');
-    expect(html).toContain('for text');
-    expect(html).not.toContain('as cached text');
-    expect(html).toContain('No warm text cache this turn');
-    expect(html).not.toContain('cheap cache-read');
+    expect(html).toContain('較大');
+    expect(html).toContain('純文字則為');
+    expect(html).not.toContain('快取文字');
+    expect(html).toContain('本回合沒有溫熱的文字快取');
+    expect(html).not.toContain('便宜地走快取讀取');
   });
 
   it('cache_read=0: text is cold too, no cache-busted warm-text narration', () => {
@@ -174,10 +174,10 @@ describe('renderContextMapFragment — cold vs warm honesty', () => {
       }),
       [],
     );
-    expect(html).toContain('smaller');
-    expect(html).toContain('text would bill as');
-    expect(html).toContain('No warm text cache this turn');
-    expect(html).not.toContain('cached text');
+    expect(html).toContain('較小');
+    expect(html).toContain('純文字會計費');
+    expect(html).toContain('本回合沒有溫熱的文字快取');
+    expect(html).not.toContain('快取文字');
     expect(html).not.toContain('re-imaged the prefix and missed the image cache');
   });
 });
@@ -203,7 +203,7 @@ describe('renderRecentFragment — billed delta presentation', () => {
       preview_meta: '',
     } satisfies RecentPayload);
 
-    expect(html).toContain('Saved/lost');
+    expect(html).toContain('省下／多花');
     expect(html).toContain('class="num neg">-61,908</td>');
     expect(html).not.toContain('class="num pos">—</td>');
   });
@@ -215,26 +215,26 @@ describe('renderContextMapFragment — the 100-image request cap', () => {
   // name the reason, and only when there is one.
   it('says so when the client\'s own images ate into the cap', () => {
     const html = renderContextMapFragment(ctx({ nativeImages: 12 }), []);
-    expect(html).toContain('12 images came from your side');
-    expect(html).toContain('100-image request cap');
+    expect(html).toContain('有 12 張圖片來自你這端');
+    expect(html).toContain('單次請求 100 張圖片的上限');
   });
 
   it('reports pages that were rendered but never sent', () => {
     // 40 ours + 2 theirs = 42 rendered, 28 on the wire → 14 absorbed.
     const html = renderContextMapFragment(ctx({ imageCount: 40, nativeImages: 2, wireImages: 28 }), []);
-    expect(html).toContain('14 rendered pages never went out');
-    expect(html).toContain('28 on the wire');
+    expect(html).toContain('有 14 頁已算繪的圖片未送出');
+    expect(html).toContain('實際上線 28 張');
   });
 
   it('reports blocks that stayed text because the cap was full', () => {
     const html = renderContextMapFragment(ctx({ imageBudgetSkips: 3 }), []);
-    expect(html).toContain('3 blocks stayed as text');
+    expect(html).toContain('有 3 個區塊因圖片額度已滿而維持純文字');
   });
 
   it('uses the singular where it should', () => {
     const html = renderContextMapFragment(ctx({ nativeImages: 1, imageBudgetSkips: 1 }), []);
-    expect(html).toContain('1 image came from your side');
-    expect(html).toContain('1 block stayed as text');
+    expect(html).toContain('有 1 張圖片來自你這端');
+    expect(html).toContain('有 1 個區塊因圖片額度已滿而維持純文字');
   });
 
   it('stays silent on an ordinary turn', () => {
@@ -244,7 +244,7 @@ describe('renderContextMapFragment — the 100-image request cap', () => {
 
   it('stays silent when the wire count merely agrees', () => {
     const html = renderContextMapFragment(ctx({ imageCount: 3, nativeImages: 0, wireImages: 3 }), []);
-    expect(html).not.toContain('never went out');
+    expect(html).not.toContain('未送出');
   });
 });
 

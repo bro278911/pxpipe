@@ -173,12 +173,12 @@ describe('serveFragment', () => {
   it('renders the toggle fragment reflecting compression state', async () => {
     const on = await dash.serveFragment('toggle', url, 1234);
     expect(on.headers.get('content-type')).toContain('text/html');
-    expect(await on.text()).toContain('Disable compression');
+    expect(await on.text()).toContain('關閉壓縮');
     dash.handleCompressionToggle({ enabled: false });
     const off = await dash.serveFragment('toggle', url, 1234);
     const offHtml = await off.text();
-    expect(offHtml).toContain('PASSTHROUGH MODE');
-    expect(offHtml).toContain('Enable compression');
+    expect(offHtml).toContain('直通模式');
+    expect(offHtml).toContain('啟用壓縮');
     dash.handleCompressionToggle({ enabled: true });
   });
 
@@ -188,7 +188,7 @@ describe('serveFragment', () => {
       delete process.env.PXPIPE_MODELS;
       setAllowedModelBases(null); // reset to built-in Fable-only default
       const off = await (await dash.serveFragment('models', url, 1234)).text();
-      expect(off).toContain('Image OpenAI Responses models');
+      expect(off).toContain('轉圖的 OpenAI Responses 模型');
       expect(off).not.toContain('<div class="models" style="display:none">');
       // PXPIPE_MODELS textbox mirrors the live scope as CSV.
       expect(off).toContain('name="list"');
@@ -287,7 +287,7 @@ describe('serveFragment', () => {
     expect(recent).toContain('<table');
     expect(recent).toContain('gpt-5.5');
     const stats = await (await dash.serveFragment('stats', url, 4711)).text();
-    expect(stats).toContain('requests');
+    expect(stats).toContain('請求數');
   });
 
   it('shows the OpenAI Responses composition in request Details', async () => {
@@ -313,17 +313,17 @@ describe('serveFragment', () => {
       } as never,
     });
     const html = await (await dash.serveFragment('context-map', new URL('http://localhost/fragments/context-map'), 1)).text();
-    expect(html).toContain('Original Responses composition');
-    expect(html).toContain('Reasoning / encrypted items');
-    expect(html).toContain('Native tool JSON');
-    expect(html).toContain('Function outputs eligible in old closed pairs');
-    expect(html).toContain('Function outputs actually imaged this request');
-    expect(html).toContain('Completed tool pairs');
-    expect(html).toContain('Open calls kept native');
+    expect(html).toContain('原始 Responses 組成');
+    expect(html).toContain('推理／加密項目');
+    expect(html).toContain('原生工具 JSON');
+    expect(html).toContain('舊的已結束配對中符合轉圖資格的函式輸出');
+    expect(html).toContain('本次請求實際轉成圖片的函式輸出');
+    expect(html).toContain('已完成的工具配對');
+    expect(html).toContain('維持原生的未結束呼叫');
     expect(html).toContain('56.0k tok');
-    expect(html).toContain('sent to gpt-5.6-sol');
-    expect(html).toContain('Model reply (output)');
-    expect(html).toContain('never calls Anthropic /count_tokens');
+    expect(html).toContain('頁圖片給 gpt-5.6-sol');
+    expect(html).toContain('模型回覆（輸出）');
+    expect(html).toContain('不會呼叫 Anthropic 的 /count_tokens');
   });
 
   it('renders keyboard-accessible hover help for stat question marks', async () => {
@@ -424,9 +424,9 @@ describe('dashboard page help UI', () => {
     } as StatsPayload, 47821);
 
     expect(html).toContain('$0.1607');
-    expect(html).toContain('vs $0.4854 without pxpipe');
-    expect(html).not.toContain('vs $0.0722 without pxpipe');
-    expect(html).toContain('same paid imaged requests');
+    expect(html).toContain('未使用 pxpipe 則為 $0.4854');
+    expect(html).not.toContain('未使用 pxpipe 則為 $0.0722');
+    expect(html).toContain('同一批已計費的轉圖請求');
   });
 });
 
@@ -758,14 +758,14 @@ describe('Gemini savings split', () => {
     const header = await (await dash.serveFragment('header', new URL('http://localhost/fragments/header'), 1)).text();
     expect(header).not.toContain('$0.03');
     const html = await (await dash.serveFragment('recent', new URL('http://localhost/fragments/recent'), 1)).text();
-    expect(html).toContain('Details →');
+    expect(html).toContain('詳情 →');
     const details = await (await dash.serveFragment(
       'context-map',
       new URL(`http://localhost/fragments/context-map?req=${row.img_id}`),
       1,
     )).text();
     expect(details).toContain('gemini-3.6-flash');
-    expect(details).toContain('System prompt + tool docs');
+    expect(details).toContain('系統提示 + 工具說明');
   });
 
   it('preserves Gemini cached-token rows during replay', async () => {
@@ -1072,8 +1072,8 @@ describe('stats table: event-based cache hit rate', () => {
     const html = renderStatsTableFragment({ summary } as never);
     // Pin the value to its own row: the table is a single line, so a bare
     // "contains" would also pass on some other row's number.
-    const evRow = /<td>cache hit \(by events\)<\/td><td class="num">([^<]*)<\/td>/.exec(html);
-    expect(evRow, 'the "cache hit (by events)" row must exist').not.toBeNull();
+    const evRow = /<td>快取命中（依事件）<\/td><td class="num">([^<]*)<\/td>/.exec(html);
+    expect(evRow, '「快取命中（依事件）」這一列必須存在').not.toBeNull();
     expect(evRow![1]).toBe('66.7%'); // not '-', which is what the dead field produced
   });
 });
