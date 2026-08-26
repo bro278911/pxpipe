@@ -1579,7 +1579,7 @@ export class DashboardState {
       }
       case 'sessions': {
         const res = await this.serveSessionsJson();
-        if (!res.ok) return htmlResponse(`<div class="status">sessions unavailable</div>`);
+        if (!res.ok) return htmlResponse(`<div class="status">無法取得 session 資料</div>`);
         const p = (await res.json()) as SessionsPayload;
         return htmlResponse(renderSessionsFragment(p));
       }

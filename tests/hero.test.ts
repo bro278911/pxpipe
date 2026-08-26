@@ -24,8 +24,8 @@ describe('renderSessionSummaryFragment hero', () => {
     const html = renderSessionSummaryFragment(
       payload({ baseline_input_weighted: 7000, actual_input_weighted: 1800 }),
     );
-    expect(html).toContain('fewer tokens');
-    expect(html).not.toContain('more tokens');
+    expect(html).toContain('少用');
+    expect(html).not.toContain('多用');
     expect(html).toContain('74%'); // 1 - 1800/7000
   });
 
@@ -35,8 +35,8 @@ describe('renderSessionSummaryFragment hero', () => {
     const html = renderSessionSummaryFragment(
       payload({ baseline_input_weighted: 1546, actual_input_weighted: 1863 }),
     );
-    expect(html).toContain('more tokens');
-    expect(html).not.toContain('fewer tokens');
+    expect(html).toContain('多用');
+    expect(html).not.toContain('少用');
     expect(html).toContain('hero-neg'); // red styling on a loss
   });
 
@@ -54,7 +54,7 @@ describe('renderSessionSummaryFragment hero', () => {
 
   it('renders the warming-up state with no measured requests', () => {
     const html = renderSessionSummaryFragment(payload({ compressed_requests: 0 }));
-    expect(html).toContain('Warming up');
-    expect(html).not.toContain('fewer tokens');
+    expect(html).toContain('暖機中');
+    expect(html).not.toContain('少用');
   });
 });

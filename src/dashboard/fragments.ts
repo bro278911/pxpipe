@@ -53,22 +53,22 @@ function shortPath(p: string | null | undefined): string {
 // ---- compression toggle (kill switch) ------------------------------------
 
 export function renderToggleFragment(enabled: boolean): string {
-  // NOTE: "PASSTHROUGH MODE", "Disable compression", "Enable compression" are asserted by tests.
+  // NOTE:「直通模式」「關閉壓縮」「啟用壓縮」為測試斷言字串。
   const banner = enabled
     ? ''
-    : `<div class="banner"><strong>PASSTHROUGH MODE</strong> — compression is off. Every request goes to Claude unchanged: no images, no savings. Use this to A/B test, or if the upstream API is having problems.</div>`;
+    : `<div class="banner"><strong>直通模式</strong> — 壓縮已關閉。每個請求都原封不動送到 Claude：不轉圖、不省 token。適合用來 A/B 對照，或上游 API 出狀況時暫時停用。</div>`;
   // Button POSTs the OPPOSITE of current state; 2s poll keeps it fresh.
   const confirm = enabled
-    ? ` hx-confirm="Turn compression off?\n\nRequests will pass straight through to Claude, unchanged. Restarting the proxy turns it back on."`
+    ? ` hx-confirm="要關閉壓縮嗎？\n\n請求會原封不動直接送往 Claude。重新啟動 proxy 後會自動恢復開啟。"`
     : '';
   return (
     banner +
     `<div class="switch">` +
-    `<span class="switch-state ${enabled ? 'on' : 'off'}"><span class="switch-dot"></span>${enabled ? 'Compression on' : 'Compression off'}</span>` +
+    `<span class="switch-state ${enabled ? 'on' : 'off'}"><span class="switch-dot"></span>${enabled ? '壓縮開啟中' : '壓縮已關閉'}</span>` +
     `<button class="switch-btn" type="button" hx-post="/fragments/toggle" hx-target="#frag-toggle" hx-vals='{"enabled": ${!enabled}}'${confirm}>` +
-    (enabled ? 'Disable compression' : 'Enable compression') +
+    (enabled ? '關閉壓縮' : '啟用壓縮') +
     `</button>` +
-    `<span class="hint">kill switch · resets to on when you restart</span>` +
+    `<span class="hint">緊急開關 · 重新啟動後自動恢復開啟</span>` +
     `</div>`
   );
 }
@@ -141,32 +141,32 @@ export function renderModelsFragment(
     .join('');
   const moot = enabled
     ? ''
-    : `<div class="models"><span class="hint">compression is off — these settings have no effect right now</span></div>`;
+    : `<div class="models"><span class="hint">壓縮已關閉 — 這些設定目前不會生效</span></div>`;
   return (
     moot +
     `<div class="models">` +
-    `<span class="models-label">Image Claude models</span>` +
+    `<span class="models-label">轉圖的 Claude 模型</span>` +
     claudeChips +
-    `<span class="hint">unlisted models get plain text</span>` +
+    `<span class="hint">未列出的模型一律走純文字</span>` +
     `</div>` +
     `<div class="models">` +
-    `<span class="models-label">Image Gemini models</span>` +
+    `<span class="models-label">轉圖的 Gemini 模型</span>` +
     geminiChips +
-    `<span class="hint">enabled by default · 100/100 vision reader</span>` +
+    `<span class="hint">預設啟用 · 100/100 視覺讀取</span>` +
     `</div>` +
     `<div class="models">` +
-    `<span class="models-label">Image OpenAI Responses models</span>` +
+    `<span class="models-label">轉圖的 OpenAI Responses 模型</span>` +
     gptChips +
     grokChips +
     otherChips +
-    `<span class="hint">opt-in · no Anthropic cache_control</span>` +
+    `<span class="hint">需手動開啟 · 不支援 Anthropic cache_control</span>` +
     `</div>` +
     `<div class="models">` +
     `<span class="models-label">PXPIPE_MODELS</span>` +
     `<input class="models-csv" id="models-csv" type="text" name="list" ` +
     `value="${escapeHtml(active.join(','))}" spellcheck="false" autocomplete="off" ` +
     `hx-post="/fragments/models" hx-target="#frag-models" hx-trigger="change">` +
-    `<span class="hint">CSV of bases, or off · applies on enter/blur · export to persist</span>` +
+    `<span class="hint">模型 base 的 CSV，或填 off · 按 Enter 或離開欄位即套用 · 需匯出才會保存</span>` +
     `</div>`
   );
 }
@@ -187,9 +187,9 @@ export function renderSessionSummaryFragment(s: StatsPayload): string {
   if (measured <= 0) {
     return (
       `<div class="hero hero-empty">` +
-      `<div class="hero-eyebrow">Since start</div>` +
-      `<div class="hero-headline">Warming up…</div>` +
-      `<div class="hero-sub">Point Claude Code at this proxy with <code>ANTHROPIC_BASE_URL</code>, or launch it with <code>pxpipe warp -- claude</code> to keep <code>/remote-control</code> and claude.ai connectors working. Send a message and your running savings show up right here.</div>` +
+      `<div class="hero-eyebrow">自啟動以來</div>` +
+      `<div class="hero-headline">暖機中…</div>` +
+      `<div class="hero-sub">用 <code>ANTHROPIC_BASE_URL</code> 把 Claude Code 指向這個 proxy，或改用 <code>pxpipe warp -- claude</code> 啟動，讓 <code>/remote-control</code> 與 claude.ai 連接器維持正常。送出一則訊息後，累計節省量就會顯示在這裡。</div>` +
       `</div>`
     );
   }
@@ -205,19 +205,19 @@ export function renderSessionSummaryFragment(s: StatsPayload): string {
   const inputPct = baselineW > 0 ? (1 - actualW / baselineW) * 100 : 0;
   const positive = inputPct >= 0;
   const bigNum = `${Math.abs(inputPct).toFixed(0)}%`;
-  const word = positive ? 'fewer tokens' : 'more tokens';
+  const word = positive ? '少用' : '多用';
 
   return (
     `<div class="hero${positive ? '' : ' hero-neg'}">` +
-    `<div class="hero-eyebrow">Since start · ${numFmt(measured)} request${measured === 1 ? '' : 's'} imaged</div>` +
-    `<div class="hero-headline"><span class="hero-num">${bigNum}</span> ${word}</div>` +
+    `<div class="hero-eyebrow">自啟動以來 · 已轉圖 ${numFmt(measured)} 個請求</div>` +
+    `<div class="hero-headline">${word} <span class="hero-num">${bigNum}</span> token</div>` +
     `<div class="hero-sub">` +
-    `<strong>${kFmt(actualW)}</strong> provider-accounted input tokens vs <strong>${kFmt(baselineW)}</strong> if this same context ` +
-    `stayed plain text. Your latest messages and model output are never compressed.` +
+    `實際計費的輸入 token 為 <strong>${kFmt(actualW)}</strong>，同樣的脈絡若維持純文字則是 <strong>${kFmt(baselineW)}</strong>。` +
+    `你最新的訊息與模型輸出永遠不會被壓縮。` +
     `</div>` +
     `<div class="hero-meta">` +
-    `Provider-token basis; cache discounts applied where measurable · ` +
-    `output untouched (${kFmt(rawOutput)}) · no $ assumptions` +
+    `以供應商計費 token 為基準，可量測處已套用快取折扣 · ` +
+    `輸出未經任何處理（${kFmt(rawOutput)}） · 不做金額假設` +
     `</div>` +
     `</div>`
   );
@@ -270,55 +270,55 @@ export function renderHeaderFragment(s: StatsPayload, port: number): string {
   const withoutAvg = paidImaged > 0 ? cAvg + (s.saved_usd ?? 0) / paidImaged : 0;
   const costTile = paidImaged > 0
     ? statTile(
-        'Cost per request',
+        '每次請求成本',
         `$${cAvg.toFixed(4)}`,
-        `vs $${withoutAvg.toFixed(4)} without pxpipe`,
+        `未使用 pxpipe 則為 $${withoutAvg.toFixed(4)}`,
         cAvg <= withoutAvg ? 'pos' : 'neg',
-        'Average cost of paid imaged requests versus the cache-aware text counterfactual for those same requests. Unmeasured requests are assigned zero savings.',
+        '已計價轉圖請求的平均成本，對照同一批請求維持純文字（已計入快取折扣）的成本。未量測到的請求一律以零節省計算。',
       )
     : onlyUnpriced
       ? statTile(
-          'Cost per request',
+          '每次請求成本',
           '—',
-          'provider pricing not configured',
+          '未設定此供應商的價格',
           'muted-val',
-          'Token savings are available, but this provider is excluded from Claude-priced dollar estimates.',
+          '已有 token 節省量，但此供應商不納入以 Claude 價格換算的金額估算。',
         )
       : statTile(
-        'Cost per request',
-        'collecting…',
-        'waiting for a paid imaged request',
+        '每次請求成本',
+        '收集中…',
+        '等待第一筆已計價的轉圖請求',
         'muted-val',
-        'The comparison appears after an imaged request returns provider usage.',
+        '等轉圖請求回傳供應商用量後，才會出現這項對照。',
       );
 
   const savedUsdTile = onlyUnpriced
     ? statTile(
-        'Estimated saved',
+        '估計省下金額',
         '—',
-        'provider pricing not configured',
+        '未設定此供應商的價格',
         'muted-val',
-        'Token savings are shown separately. Dollar estimates require provider-specific pricing and are not inferred from Claude rates.',
+        'token 節省量會另外顯示。金額估算需要各供應商的專屬價格，不會用 Claude 費率推估。',
       )
     : statTile(
-        'Estimated saved',
+        '估計省下金額',
         `$${(s.saved_usd ?? 0).toFixed(2)}`,
         unpricedImaged > 0
-          ? `${numFmt(unpricedImaged)} provider-priced request${unpricedImaged === 1 ? '' : 's'} excluded`
-          : `at $${pa.input_per_mtok}/M base input price`,
+          ? `已排除 ${numFmt(unpricedImaged)} 筆其他供應商計價的請求`
+          : `以每百萬輸入 token $${pa.input_per_mtok} 的基準價計算`,
         '',
-        'Cache-aware estimate for requests covered by the configured pricing assumptions. Other providers remain excluded.',
+        '僅就符合目前價格假設的請求做快取感知估算，其他供應商仍排除在外。',
       );
 
   const strip =
     `<div class="strip">` +
-    statTile('Requests', numFmt(s.requests), `${numFmt(s.compressed_requests)} turned into images`) +
+    statTile('請求數', numFmt(s.requests), `其中 ${numFmt(s.compressed_requests)} 筆轉成圖片`) +
     statTile(
-      'Input tokens saved',
+      '省下的輸入 token',
       numFmt(s.saved_input_tokens),
-      'vs sending the same context as text',
+      '相較於同樣脈絡以純文字送出',
       'pos',
-       'Bulky context sent as compact images instead of text. Uses provider-reported input tokens and a measured or model-profile text counterfactual; recent turns and output stay text.',
+       '龐大的脈絡改用精簡圖片送出，而非純文字。採用供應商回報的輸入 token，並以實測或模型輪廓推估的純文字量做對照；最近幾輪對話與模型輸出維持文字。',
      ) +
     savedUsdTile +
     costTile +
@@ -326,72 +326,72 @@ export function renderHeaderFragment(s: StatsPayload, port: number): string {
 
   // math drawer
   const savedMath =
-    `<div><span class="k">formula:</span> <span class="v">saved = baseline − actual</span></div>` +
-    `<div><span class="k">weights:</span> <span class="v">input×1.0, cache_write_5m×1.25, cache_write_1h×2.0, cache_read×0.10</span></div>` +
+    `<div><span class="k">公式：</span> <span class="v">節省 = 基準 − 實際</span></div>` +
+    `<div><span class="k">權重：</span> <span class="v">input×1.0, cache_write_5m×1.25, cache_write_1h×2.0, cache_read×0.10</span></div>` +
     `<div class="sp"></div>` +
-    mathRow('baseline', s.baseline_input_weighted, '(cache-aware: cacheable×weight + cold_tail)') +
-    mathRow('actual', s.actual_input_weighted, '(input + cc_5m×1.25 + cc_1h×2.0 + cr×0.10)') +
-    mathRow('saved', s.saved_input_tokens, `<span class="op">=</span> baseline − actual`) +
-    `<span class="src">output excluded — identical with/without compression</span>`;
+    mathRow('基準', s.baseline_input_weighted, '（快取感知：可快取×權重 + 冷尾段）') +
+    mathRow('實際', s.actual_input_weighted, '（input + cc_5m×1.25 + cc_1h×2.0 + cr×0.10）') +
+    mathRow('節省', s.saved_input_tokens, `<span class="op">=</span> 基準 − 實際`) +
+    `<span class="src">不含輸出 — 壓縮與否結果完全相同</span>`;
 
   const usdMath = onlyUnpriced
-    ? `<div><span class="v">Unavailable for this provider.</span></div>` +
-      `<span class="src">Token savings are still reported; Claude pricing is not applied across providers.</span>`
+    ? `<div><span class="v">此供應商無法提供金額估算。</span></div>` +
+      `<span class="src">token 節省量仍會照常回報；Claude 的價格不會套用到其他供應商。</span>`
     :
-    `<div><span class="k">formula:</span> <span class="v">$ saved = saved_tokens × $${pa.input_per_mtok}/Mtok</span></div>` +
+    `<div><span class="k">公式：</span> <span class="v">省下金額 = 節省 token 數 × $${pa.input_per_mtok}/Mtok</span></div>` +
     `<div class="sp"></div>` +
-    mathRow('saved_tokens', s.saved_input_tokens, '(cache-aware, input-side)') +
-    mathRow('saved_usd', `$${(s.saved_usd || 0).toFixed(4)} `, `<span class="op">=</span> saved_tokens × input_rate / 1e6`) +
-    `<span class="src">source: ${escapeHtml(pa.source || 'docs.anthropic.com pricing')}</span>`;
+    mathRow('節省 token 數', s.saved_input_tokens, '（快取感知，輸入側）') +
+    mathRow('省下金額', `$${(s.saved_usd || 0).toFixed(4)} `, `<span class="op">=</span> 節省 token 數 × 輸入單價 / 1e6`) +
+    `<span class="src">來源：${escapeHtml(pa.source || 'docs.anthropic.com pricing')}</span>`;
 
   const costPerRequestMath =
-    `<div><span class="k">formula:</span> <span class="v">without_pxpipe = actual_imaged + measured_savings</span></div>` +
-    `<div><span class="k">why:</span> <span class="v">both averages cover the same paid imaged requests. Passthrough requests are not used because the profitability gate selects a different, generally smaller population.</span></div>` +
+    `<div><span class="k">公式：</span> <span class="v">未使用 pxpipe = 實際轉圖成本 + 實測節省</span></div>` +
+    `<div><span class="k">為什麼：</span> <span class="v">兩邊的平均都涵蓋同一批已計費的轉圖請求。直通請求不列入計算，因為獲利門檻挑中的是另一群、通常較小的請求。</span></div>` +
     `<div class="sp"></div>` +
-    mathRow(`actual imaged (n=${paidImaged})`, `$${(s.compressed_actual_usd || 0).toFixed(4)}`, `total · avg $${cAvg.toFixed(4)}/req`) +
-    mathRow('measured savings', `$${(s.saved_usd || 0).toFixed(4)}`, 'cache-aware input-side total') +
-    mathRow('without pxpipe', `$${withoutAvg.toFixed(4)}/req`, '<span class="op">=</span> (actual imaged + measured savings) / n') +
-    `<span class="src">unmeasured imaged rows remain in n and actual cost, with zero assumed savings</span>`;
+    mathRow(`實際轉圖 (n=${paidImaged})`, `$${(s.compressed_actual_usd || 0).toFixed(4)}`, `總計 · 平均 $${cAvg.toFixed(4)}/次`) +
+    mathRow('實測節省', `$${(s.saved_usd || 0).toFixed(4)}`, '快取感知的輸入側總計') +
+    mathRow('未使用 pxpipe', `$${withoutAvg.toFixed(4)}/次`, '<span class="op">=</span>（實際轉圖 + 實測節省）/ n') +
+    `<span class="src">未量測到的轉圖請求仍計入 n 與實際成本，但節省量一律以零計算</span>`;
 
   const pctMath =
-    `<div><span class="k">formula:</span> <span class="v">share_of_spend = saved / (all_baseline_equivalent + all_output × ${pa.output_multiplier})</span></div>` +
-    `<div><span class="k">diagnostic, not the headline:</span> <span class="v">this is a counterfactual ("what you WOULD have paid"). It leans on the count_tokens probe, the cache-aware split, and an input-rate assumption. Useful as a sanity check; the real-traffic answer is the compressed-vs-passthrough split above.</span></div>` +
+    `<div><span class="k">公式：</span> <span class="v">總支出占比 = 節省量 / (基準等價量 + 全部輸出 × ${pa.output_multiplier})</span></div>` +
+    `<div><span class="k">這是診斷值，不是主打數字：</span> <span class="v">這是一個反事實推估（「你原本會付多少」）。它依賴 count_tokens 探測、快取感知拆分，以及輸入單價假設。適合當合理性檢查；真實流量的答案是上方的「壓縮 vs 直通」對比。</span></div>` +
     `<div class="sp"></div>` +
-    mathRow('saved', s.saved_input_tokens, '(measured-rows numerator; cache-aware)') +
-    mathRow('all_baseline_equivalent', s.all_baseline_equivalent_weighted, '(every paid request; baseline on measured + actual on the rest)') +
-    mathRow(`all_output × ${pa.output_multiplier}`, s.all_output_weighted, '(every paid request)') +
-    mathRow('share_of_spend', (s.saved_pct_of_all_spend || 0).toFixed(1) + '%', `<span class="op">=</span> saved / counterfactual_total × 100`) +
-    mathRow('all_usage_requests', s.all_usage_requests, '(denominator request count — compressed + passthrough + probe-failed)') +
-    `<span class="src">measured numerator, all-rows counterfactual denominator — bounded at 100%</span>`;
+    mathRow('節省量', s.saved_input_tokens, '（已量測列的分子；快取感知）') +
+    mathRow('基準等價量', s.all_baseline_equivalent_weighted, '（每一筆計費請求；已量測者取基準值，其餘取實際值）') +
+    mathRow(`全部輸出 × ${pa.output_multiplier}`, s.all_output_weighted, '（每一筆計費請求）') +
+    mathRow('總支出占比', (s.saved_pct_of_all_spend || 0).toFixed(1) + '%', `<span class="op">=</span> 節省量 / 反事實總量 × 100`) +
+    mathRow('全部用量請求數', s.all_usage_requests, '（分母請求數 — 壓縮 + 直通 + 探測失敗）') +
+    `<span class="src">分子為實測值，分母為全列反事實推估 — 上限為 100%</span>`;
 
   const tokeqMath =
-    `<div><span class="k">formula:</span> <span class="v">token_equivalent = input + output × ${pa.output_multiplier}</span></div>` +
-    `<div><span class="k">why:</span> <span class="v">matches Anthropic's per-Mtok price ratio ($${pa.input_per_mtok} input vs $${pa.input_per_mtok * pa.output_multiplier} output) — this is what the weekly-limit meter counts.</span></div>` +
+    `<div><span class="k">公式：</span> <span class="v">token 等價量 = 輸入 + 輸出 × ${pa.output_multiplier}</span></div>` +
+    `<div><span class="k">為什麼：</span> <span class="v">對應 Anthropic 每 Mtok 的價格比（輸入 $${pa.input_per_mtok} vs 輸出 $${pa.input_per_mtok * pa.output_multiplier}）— 週用量上限的計量方式就是這樣算的。</span></div>` +
     `<div class="sp"></div>` +
-    mathRow('actual_token_equivalent', s.actual_token_equivalent) +
-    mathRow('baseline_token_equivalent', s.baseline_token_equivalent, `(unproxied counterfactual, same ×${pa.output_multiplier} on output)`) +
+    mathRow('實際 token 等價量', s.actual_token_equivalent) +
+    mathRow('基準 token 等價量', s.baseline_token_equivalent, `（未經 proxy 的反事實推估，輸出同樣 ×${pa.output_multiplier}）`) +
     `<div class="sp"></div>` +
-    mathRow('events_with_measurement', s.events_with_measurement, '(events where the SSE/JSON scanner produced char counts)') +
-    mathRow('measured_text_chars', s.measured_text_chars, '') +
-    mathRow('measured_thinking_chars', s.measured_thinking_chars, '') +
-    mathRow('measured_tool_use_chars', s.measured_tool_use_chars, '') +
-    mathRow('measured_redacted_blocks', s.measured_redacted_block_count, '(opaque encrypted blocks — billed but unmeasurable)') +
-    `<span class="src">measured — no estimation</span>`;
+    mathRow('含量測的事件數', s.events_with_measurement, '（SSE/JSON 掃描器有產出字元數的事件）') +
+    mathRow('實測文字字元數', s.measured_text_chars, '') +
+    mathRow('實測思考字元數', s.measured_thinking_chars, '') +
+    mathRow('實測工具呼叫字元數', s.measured_tool_use_chars, '') +
+    mathRow('實測遮蔽區塊數', s.measured_redacted_block_count, '（不透明的加密區塊 — 會計費但無法量測）') +
+    `<span class="src">實際量測 — 未經推估</span>`;
 
   const drawer =
     `<details class="drawer" id="math-drawer">` +
-    `<summary>Show the math &amp; honesty receipts</summary>` +
-    `<div class="drawer-intro">Every number above, derived from the same per-event log. The proxy only moves <em>input</em> tokens; output is shown on both sides so percentages stay honest.</div>` +
+    `<summary>顯示算式與誠實對帳</summary>` +
+    `<div class="drawer-intro">上方每一個數字都來自同一份逐事件紀錄。這個 proxy 只會影響<em>輸入</em> token；輸出兩邊都照列，讓百分比維持誠實。</div>` +
     `<div class="math-grid">` +
-    mathBlock('Input tokens saved', savedMath) +
-    mathBlock('Dollars saved', usdMath) +
-    mathBlock('Cost per imaged request', costPerRequestMath) +
-    mathBlock('Share of total spend (diagnostic)', pctMath) +
-    mathBlock('Token-equivalent (what the weekly cap counts)', tokeqMath) +
+    mathBlock('節省的輸入 token', savedMath) +
+    mathBlock('節省的金額', usdMath) +
+    mathBlock('每次轉圖請求成本', costPerRequestMath) +
+    mathBlock('總支出占比（診斷值）', pctMath) +
+    mathBlock('Token 等價量（週用量上限的計算基準）', tokeqMath) +
     `</div></details>`;
 
   // NOTE: tests assert the header fragment contains the port number.
-  const updated = `<div class="updated"><span class="live-dot"></span>live · port ${port} · uptime ${formatDuration(s.uptime_sec)}</div>`;
+  const updated = `<div class="updated"><span class="live-dot"></span>運行中 · 連接埠 ${port} · 已運行 ${formatDuration(s.uptime_sec)}</div>`;
 
   return strip + drawer + updated;
 }
@@ -443,12 +443,12 @@ export interface ContextMapData {
 }
 
 const CTXMAP_BUCKETS: ReadonlyArray<readonly [string, string]> = [
-  ['static_slab', 'System prompt + tool docs'],
-  ['reminder', 'System-reminder blocks'],
-  ['tool_result_prose', 'Tool results — prose'],
-  ['tool_result_log', 'Tool results — logs'],
-  ['tool_result_json', 'Tool results — JSON'],
-  ['history', 'Older conversation turns'],
+  ['static_slab', '系統提示 + 工具說明'],
+  ['reminder', 'System-reminder 區塊'],
+  ['tool_result_prose', '工具結果 — 文章'],
+  ['tool_result_log', '工具結果 — 日誌'],
+  ['tool_result_json', '工具結果 — JSON'],
+  ['history', '較早的對話輪次'],
 ];
 
 /** Image-vs-text breakdown for one request. */
@@ -459,10 +459,10 @@ export function renderContextMapFragment(
 ): string {
   const isLatest = c !== undefined && c.id === (history.at(-1)?.id ?? -1);
   if (notFound) {
-    return `<div class="ctxmap"><div class="empty-note">That request's breakdown isn't kept anymore — only the most recent requests are. Pick <strong>Details</strong> on a newer row.</div></div>`;
+    return `<div class="ctxmap"><div class="empty-note">這筆請求的拆解已經不再保留 — 只有最近的請求才留著。請在較新的列上點<strong>詳情</strong>。</div></div>`;
   }
   if (!c || (c.baselineTokens <= 0 && c.imageCount <= 0)) {
-    return `<div class="ctxmap"><div class="empty-note">Pick <strong>Details</strong> on a request to see exactly which parts became images and which stayed as text.</div></div>`;
+    return `<div class="ctxmap"><div class="empty-note">在任一請求上點<strong>詳情</strong>，即可看到哪些部分轉成了圖片、哪些維持純文字。</div></div>`;
   }
   // Cache-aware billing-equivalent basis — identical to the recent row's
   // As-text / Sent / Saved/lost columns. These are not raw token counts; they apply
@@ -482,53 +482,53 @@ export function renderContextMapFragment(
     .filter(([, ch]) => ch > 0)
     .map(
       ([label, ch]) =>
-        `<div class="ctx-row"><span class="ctx-lbl">${label}</span><span class="ctx-val">${kFmt(ch)} chars</span></div>`,
+        `<div class="ctx-row"><span class="ctx-lbl">${label}</span><span class="ctx-val">${kFmt(ch)} 字元</span></div>`,
     )
     .join('');
 
   const rc = c.responsesComposition;
   const responseRows: ReadonlyArray<readonly [string, number]> = rc
     ? [
-        ['Instructions', rc.instructions],
-        ['System / developer items', rc.systemDeveloper],
-        ['User / assistant text kept native', rc.userAssistant],
-        ['Native tool JSON', rc.toolsJson],
-        ['Function calls', rc.functionCalls],
-        ['Function outputs', rc.functionOutputs],
-        ['Function outputs eligible in old closed pairs', rc.imageableFunctionOutputs ?? 0],
-        ['Function outputs actually imaged this request', rc.collapsedFunctionOutputs ?? 0],
-        ['Reasoning / encrypted items', rc.reasoningEncrypted],
-        ['Compaction / opaque items', rc.compactionOpaque],
-        ['Other Responses items', rc.other],
+        ['指令（instructions）', rc.instructions],
+        ['系統／開發者項目', rc.systemDeveloper],
+        ['維持原生的使用者／助理文字', rc.userAssistant],
+        ['原生工具 JSON', rc.toolsJson],
+        ['函式呼叫', rc.functionCalls],
+        ['函式輸出', rc.functionOutputs],
+        ['舊的已結束配對中符合轉圖資格的函式輸出', rc.imageableFunctionOutputs ?? 0],
+        ['本次請求實際轉成圖片的函式輸出', rc.collapsedFunctionOutputs ?? 0],
+        ['推理／加密項目', rc.reasoningEncrypted],
+        ['壓縮／不透明項目', rc.compactionOpaque],
+        ['其他 Responses 項目', rc.other],
       ]
     : [];
   const responseBreakdown = rc
-    ? `<div class="split-note" style="margin-top:12px"><strong>Original Responses composition (local o200k estimate)</strong></div>` +
+    ? `<div class="split-note" style="margin-top:12px"><strong>原始 Responses 組成（本機 o200k 推估）</strong></div>` +
       responseRows.filter(([, n]) => n > 0).map(([label, n]) =>
         `<div class="ctx-row"><span class="ctx-lbl">${label}</span><span class="ctx-val">${kFmt(n)} tok</span></div>`,
       ).join('') +
-      `<div class="ctx-row"><span class="ctx-lbl">Imageable text baseline</span><span class="ctx-val">${kFmt(c.baselineImagedTokens ?? 0)} tok</span></div>` +
-      `<div class="ctx-row"><span class="ctx-lbl">Completed tool pairs (old / recent native / imaged)</span><span class="ctx-val">${rc.completedFunctionPairs ?? 0} (${rc.oldFunctionPairs ?? 0} / ${rc.recentNativeFunctionPairs ?? 0} / ${rc.collapsedFunctionPairs ?? 0})</span></div>` +
-      `<div class="ctx-row"><span class="ctx-lbl">Open calls kept native</span><span class="ctx-val">${rc.openFunctionCalls ?? 0}</span></div>` +
-      `<div class="ctx-row"><span class="ctx-lbl">Native image parts</span><span class="ctx-val">${rc.imageParts}</span></div>` +
-      `<div class="ctx-row"><span class="ctx-lbl">Provider tokens not explained locally</span><span class="ctx-val">${kFmt(c.responsesUnexplainedTokens ?? 0)} tok</span></div>` +
-      `<div class="split-note">This diagnostic uses local o200k counts only; it never calls Anthropic /count_tokens.</div>`
+      `<div class="ctx-row"><span class="ctx-lbl">可轉圖文字的基準量</span><span class="ctx-val">${kFmt(c.baselineImagedTokens ?? 0)} tok</span></div>` +
+      `<div class="ctx-row"><span class="ctx-lbl">已完成的工具配對（舊的／近期原生／已轉圖）</span><span class="ctx-val">${rc.completedFunctionPairs ?? 0}（${rc.oldFunctionPairs ?? 0} / ${rc.recentNativeFunctionPairs ?? 0} / ${rc.collapsedFunctionPairs ?? 0}）</span></div>` +
+      `<div class="ctx-row"><span class="ctx-lbl">維持原生的未結束呼叫</span><span class="ctx-val">${rc.openFunctionCalls ?? 0}</span></div>` +
+      `<div class="ctx-row"><span class="ctx-lbl">原生影像區塊</span><span class="ctx-val">${rc.imageParts}</span></div>` +
+      `<div class="ctx-row"><span class="ctx-lbl">本機無法解釋的供應商 token</span><span class="ctx-val">${kFmt(c.responsesUnexplainedTokens ?? 0)} tok</span></div>` +
+      `<div class="split-note">此診斷只採用本機 o200k 計數，不會呼叫 Anthropic 的 /count_tokens。</div>`
     : '';
 
   const ids = c.imageIds ?? [];
-  const modelLabel = c.model ? escapeHtml(c.model) : 'the model';
+  const modelLabel = c.model ? escapeHtml(c.model) : '模型';
   const gallery = ids.length
-    ? `<div class="pages-title">${ids.length} image page${ids.length === 1 ? '' : 's'} sent to ${modelLabel} — click one to read the exact text behind it:</div>` +
+    ? `<div class="pages-title">已送出 ${ids.length} 頁圖片給 ${modelLabel} — 點任一頁可讀取其背後的原始文字：</div>` +
       `<div class="pages">` +
       ids
         .map(
           (id) =>
-            `<img class="page" src="/proxy-latest-png?id=${id}" alt="page ${id}" loading="lazy" title="Click to read the source text behind page ${id}" onclick="ppPin(${id});ppSource(true)" onerror="this.classList.add('page-gone'); this.alt='page ${id} expired from buffer';" />`,
+            `<img class="page" src="/proxy-latest-png?id=${id}" alt="第 ${id} 頁" loading="lazy" title="點擊可閱讀第 ${id} 頁背後的原始文字" onclick="ppPin(${id});ppSource(true)" onerror="this.classList.add('page-gone'); this.alt='第 ${id} 頁已從緩衝區過期';" />`,
         )
         .join('') +
       `</div>`
     : c.restored && c.imageCount > 0
-      ? `<div class="pages-title">${c.imageCount} image page${c.imageCount === 1 ? '' : 's'} were sent — thumbnails expired when the proxy restarted. The breakdown above is reconstructed from the saved log.</div>`
+      ? `<div class="pages-title">已送出 ${c.imageCount} 頁圖片 — proxy 重啟後縮圖已過期，上方拆解是依存檔紀錄重建的。</div>`
       : '';
 
   // Did the TEXT baseline's prefix read warm this turn? This follows the actual
@@ -536,33 +536,33 @@ export function renderContextMapFragment(
   // means cold. No wall-clock-only counterfactual is credited.
   const warm = showCompare && c.warm;
   const google = c.model?.startsWith('gemini-') === true;
-  const textNoun = warm ? 'cached text' : 'text';
+  const textNoun = warm ? '快取文字' : '純文字';
   // Raw count_tokens can grow (imaging bloated a short prompt), so say so rather
   // than rendering a nonsensical "shrank -36%".
   const rawPhrase =
-    rawShrink >= 0 ? `Raw content shrank ${rawShrink}%.` : `Raw content grew ${-rawShrink}%.`;
+    rawShrink >= 0 ? `原始內容縮小 ${rawShrink}%。` : `原始內容增加 ${-rawShrink}%。`;
   const headline = !showCompare
-    ? `<strong>${kFmt(c.actualInputEff || c.realInput)}</strong> billing-equivalent input tokens sent`
+    ? `已送出 <strong>${kFmt(c.actualInputEff || c.realInput)}</strong> 個計費等價輸入 token`
     : pct >= 0
       ? google
-        ? `<span class="ctx-big">${pct}%</span> smaller — text would account as <strong>${kFmt(base)}</strong> input tokens; images account as <strong>${kFmt(real)}</strong>`
-        : `<span class="ctx-big">${pct}%</span> smaller — ${textNoun} would bill as <strong>${kFmt(base)}</strong> input tokens; images billed as <strong>${kFmt(real)}</strong>`
+        ? `<span class="ctx-big">${pct}%</span> 較小 — 純文字會計為 <strong>${kFmt(base)}</strong> 個輸入 token；圖片計為 <strong>${kFmt(real)}</strong>`
+        : `<span class="ctx-big">${pct}%</span> 較小 — ${textNoun}會計費 <strong>${kFmt(base)}</strong> 個輸入 token；圖片實際計費 <strong>${kFmt(real)}</strong>`
       : google
-        ? `<span class="ctx-big">${-pct}%</span> bigger — images account as <strong>${kFmt(real)}</strong> input tokens vs <strong>${kFmt(base)}</strong> for text`
-        : `<span class="ctx-big">${-pct}%</span> bigger — images billed as <strong>${kFmt(real)}</strong> input tokens vs <strong>${kFmt(base)}</strong> for ${textNoun}`;
+        ? `<span class="ctx-big">${-pct}%</span> 較大 — 圖片計為 <strong>${kFmt(real)}</strong> 個輸入 token，純文字則為 <strong>${kFmt(base)}</strong>`
+        : `<span class="ctx-big">${-pct}%</span> 較大 — 圖片計費 <strong>${kFmt(real)}</strong> 個輸入 token，${textNoun}則為 <strong>${kFmt(base)}</strong>`;
   // Clarifying sub-line. It must match the actual request's cache state: claiming
   // a 0.1× read discount when cache_read===0 would count hypothetical cache as a
   // pxpipe effect, so cold rows price both paths cold.
   const subnote = !showCompare
-    ? 'Billed tokens count cache discounts (reads at 0.1×) — no trustworthy text baseline for this request yet.'
+    ? '計費 token 已計入快取折扣（讀取以 0.1× 計）— 這次請求尚無可信的純文字基準。'
     : google
-      ? `Same provider-token basis as the Saved column. The gap is token count. ${rawPhrase}`
+      ? `與「節省」欄採用相同的供應商 token 基準，差異來自 token 數量。${rawPhrase}`
     : !warm
-      ? `No warm text cache this turn — the text counterfactual's prefix is priced at the 1.25× create rate (the same event the imaged path pays), identical basis to the Saved column. The gap is purely token count. ${rawPhrase}`
+      ? `本回合沒有溫熱的文字快取 — 純文字對照組的前綴以 1.25× 建立費率計價（與圖片路徑所付的是同一筆事件），基準與「節省」欄完全相同，差異純粹來自 token 數量。${rawPhrase}`
       : pct < 0 && rawShrink > 0
-          ? `Billed = after cache discounts (reads at 0.1×), same basis as the Saved column. The raw text is ${rawShrink}% smaller, but most of it would have been a cheap cache-read — so imaging it cost more.`
-          : `Billed = after cache discounts (reads at 0.1×), same basis as the Saved column. ${rawPhrase}`;
-  const title = isLatest ? 'Latest request' : 'Selected request';
+          ? `計費 = 套用快取折扣後（讀取以 0.1× 計），基準與「節省」欄相同。原始文字雖小 ${rawShrink}%，但其中多數本來就能便宜地走快取讀取 — 所以改成圖片反而更貴。`
+          : `計費 = 套用快取折扣後（讀取以 0.1× 計），基準與「節省」欄相同。${rawPhrase}`;
+  const title = isLatest ? '最新請求' : '選取的請求';
 
   // The provider caps a request at 100 image blocks and counts the CLIENT's
   // images against the same limit. Three facts are worth showing, and only when
@@ -572,14 +572,14 @@ export function renderContextMapFragment(
   //   - we gave up on imaging something because the cap was full.
   const capBits: string[] = [];
   if ((c.nativeImages ?? 0) > 0) {
-    capBits.push(`${c.nativeImages} image${c.nativeImages === 1 ? '' : 's'} came from your side and count against the same 100-image request cap`);
+    capBits.push(`有 ${c.nativeImages} 張圖片來自你這端，同樣計入單次請求 100 張圖片的上限`);
   }
   if (c.wireImages !== undefined && c.wireImages < c.imageCount + (c.nativeImages ?? 0)) {
     const absorbed = c.imageCount + (c.nativeImages ?? 0) - c.wireImages;
-    capBits.push(`${absorbed} rendered page${absorbed === 1 ? '' : 's'} never went out — the history collapse absorbed those messages (${c.wireImages} on the wire)`);
+    capBits.push(`有 ${absorbed} 頁已算繪的圖片未送出 — 歷史摺疊吸收了這些訊息（實際上線 ${c.wireImages} 張）`);
   }
   if ((c.imageBudgetSkips ?? 0) > 0) {
-    capBits.push(`${c.imageBudgetSkips} block${c.imageBudgetSkips === 1 ? '' : 's'} stayed as text because the image cap was full`);
+    capBits.push(`有 ${c.imageBudgetSkips} 個區塊因圖片額度已滿而維持純文字`);
   }
   const capNote = capBits.length
     ? `<div class="split-note cap-note">${capBits.map(escapeHtml).join(' · ')}</div>`
@@ -590,19 +590,19 @@ export function renderContextMapFragment(
     `<div class="ctxmap">` +
     `<div class="ctx-headline"><span class="ctx-title">${title}</span> ${headline}</div>` +
     `<div class="split-note ctx-subnote">${subnote}</div>` +
-    `<div class="legend"><span class="tag tag-img">Became an image</span><span class="tag tag-txt">Stayed as text</span></div>` +
+    `<div class="legend"><span class="tag tag-img">已轉為圖片</span><span class="tag tag-txt">維持純文字</span></div>` +
     `<div class="split">` +
     `<div class="split-col split-img">` +
-    `<div class="split-head">Compressed into images <span class="split-sum">${kFmt(totalImagedChars)} chars · ${c.imageCount} page${c.imageCount === 1 ? '' : 's'}</span></div>` +
-    (imgRows || `<div class="ctx-row muted-row">nothing imaged this request</div>`) +
+    `<div class="split-head">壓縮成圖片 <span class="split-sum">${kFmt(totalImagedChars)} 字元 · ${c.imageCount} 頁</span></div>` +
+    (imgRows || `<div class="ctx-row muted-row">這次請求沒有任何內容轉成圖片</div>`) +
     capNote +
-    `<div class="split-note">pxpipe can misread exact values inside images — treat these as gist, not byte-exact.</div>` +
+    `<div class="split-note">pxpipe 可能誤讀圖片中的精確數值 — 請當作大意參考，而非逐位元精確。</div>` +
     `</div>` +
     `<div class="split-col split-txt">` +
-    `<div class="split-head">Kept as plain text <span class="split-sum">byte-exact</span></div>` +
-    `<div class="ctx-row"><span class="ctx-lbl">Your latest messages</span><span class="ctx-val">verbatim</span></div>` +
-    `<div class="ctx-row"><span class="ctx-lbl">Model reply (output)</span><span class="ctx-val">${kFmt(c.output)} tok</span></div>` +
-    `<div class="split-note">never imaged — safe for IDs, hashes and exact numbers.</div>` +
+    `<div class="split-head">維持純文字 <span class="split-sum">逐位元精確</span></div>` +
+    `<div class="ctx-row"><span class="ctx-lbl">你最新的訊息</span><span class="ctx-val">逐字保留</span></div>` +
+    `<div class="ctx-row"><span class="ctx-lbl">模型回覆（輸出）</span><span class="ctx-val">${kFmt(c.output)} token</span></div>` +
+    `<div class="split-note">永不轉成圖片 — ID、雜湊與精確數字都安全。</div>` +
     `</div>` +
     `</div>` +
     responseBreakdown +
@@ -623,13 +623,13 @@ export function renderRecentFragment(p: RecentPayload): string {
   const rows = (p.recent ?? []).slice().reverse();
   const body =
     rows.length === 0
-      ? `<tr><td colspan="10" class="empty-cell">No requests yet — they stream in here live.</td></tr>`
+      ? `<tr><td colspan="10" class="empty-cell">尚無請求 — 有流量時會即時出現在這裡。</td></tr>`
       : rows
           .map((e: RecentRow, i: number) => {
             const viewId = (e.img_ids ?? (e.img_id != null ? [e.img_id] : []))[0];
             const viewLink =
               viewId != null
-                ? `<a class="row-view" href="#" hx-get="/fragments/context-map?req=${viewId}" hx-target="#frag-context-map" hx-swap="innerHTML">Details →</a>`
+                ? `<a class="row-view" href="#" hx-get="/fragments/context-map?req=${viewId}" hx-target="#frag-context-map" hx-swap="innerHTML">詳情 →</a>`
                 : `<span class="muted">—</span>`;
             const saved = e.session_saved_so_far_delta;
             // A loss that disappears when the newly written prefix is repriced at
@@ -643,7 +643,7 @@ export function renderRecentFragment(p: RecentPayload): string {
               cc > 0 &&
               saved + cc * (CACHE_CREATE_RATE - CACHE_READ_RATE) > 0;
             const createNote = createLoss
-              ? ` <span class="mk-create" title="Cache-create turn: this loss is the one-time ${CACHE_CREATE_RATE}× premium for writing ${numFmt(cc)} tokens to cache. Later turns re-read that prefix at ${CACHE_READ_RATE}×, which typically recoups it.">create</span>`
+              ? ` <span class="mk-create" title="快取建立回合：這筆損失是把 ${numFmt(cc)} 個 token 寫入快取所付的一次性 ${CACHE_CREATE_RATE}× 溢價。後續回合以 ${CACHE_READ_RATE}× 重讀該前綴，通常就能回本。">建立</span>`
               : '';
             const savedCell = saved == null
               ? `<td class="num muted">—</td>`
@@ -653,8 +653,8 @@ export function renderRecentFragment(p: RecentPayload): string {
                   ? `<td class="num neg">${numFmt(saved)}${createNote}</td>`
                   : `<td class="num">0</td>`;
             const imaged = e.cc_added
-              ? `<span class="badge badge-img">image</span>`
-              : `<span class="badge badge-txt">text</span>`;
+              ? `<span class="badge badge-img">圖片</span>`
+              : `<span class="badge badge-txt">文字</span>`;
             return (
               `<tr>` +
               `<td class="muted">${i + 1}</td>` +
@@ -674,14 +674,14 @@ export function renderRecentFragment(p: RecentPayload): string {
   return (
     `<table class="rtable"><thead><tr>` +
     `<th>#</th>` +
-    `<th>Result</th>` +
-    `<th>Endpoint</th>` +
-    `<th>Model</th>` +
-    `<th title="Was this request's context compressed into an image?">Sent as</th>` +
-    `<th class="num" title="Tokens the provider reported as served from cache">Cache hits</th>` +
-    `<th class="num" title="Billing-equivalent input if kept as plain text, after cache create/read rates">As text</th>` +
-    `<th class="num" title="Actual billing-equivalent input after imaging, after cache create/read rates">Sent</th>` +
-    `<th class="num" title="As-text minus Sent; negative means imaging cost more">Saved/lost</th>` +
+    `<th>結果</th>` +
+    `<th>端點</th>` +
+    `<th>模型</th>` +
+    `<th title="這次請求的脈絡有被壓成圖片嗎？">送出形式</th>` +
+    `<th class="num" title="供應商回報由快取提供的 token">快取命中</th>` +
+    `<th class="num" title="若維持純文字送出、套用快取建立／讀取費率後的等價計費輸入量">純文字時</th>` +
+    `<th class="num" title="改用圖片後、套用快取建立／讀取費率後的實際等價計費輸入量">實際送出</th>` +
+    `<th class="num" title="純文字時減去實際送出；負值代表改用圖片反而更貴">省下／多花</th>` +
     `<th></th>` +
     `</tr></thead><tbody>${body}</tbody></table>`
   );
@@ -711,35 +711,35 @@ export function renderLatestFragment(inp: LatestFragmentInput): string {
 
   const pinBar =
     pin != null
-      ? `<div class="viewer-bar"><button class="mini-btn" type="button" onclick="ppPin(null)">← back to latest</button><span class="mini-label">image #${pin}</span></div>`
+      ? `<div class="viewer-bar"><button class="mini-btn" type="button" onclick="ppPin(null)">← 回到最新一張</button><span class="mini-label">圖片 #${pin}</span></div>`
       : '';
 
   let main: string;
   if (pin != null && pinnedEvicted) {
-    main = `<div class="evicted">image #${pin} is no longer in the buffer</div>`;
+    main = `<div class="evicted">圖片 #${pin} 已不在緩衝區內</div>`;
   } else if (pin != null || hasPreview) {
     // When source pane is open the image appears inside the pairing — don't duplicate it.
-    main = showSource ? '' : `<div class="frame"><img src="${imgSrc}" alt="rendered page" /></div>`;
+    main = showSource ? '' : `<div class="frame"><img src="${imgSrc}" alt="算繪後的頁面" /></div>`;
   } else {
-    main = `<div class="empty-note">No images yet — they appear the instant pxpipe compresses a request.</div>`;
+    main = `<div class="empty-note">目前還沒有圖片 — pxpipe 一壓縮請求就會出現在這裡。</div>`;
   }
 
   const showBtn = pin != null ? !pinnedEvicted : hasPreview;
   const caption =
-    pin != null ? `image #${pin}` : meta ? `${escapeHtml(meta)} · top-left at native size` : '';
+    pin != null ? `圖片 #${pin}` : meta ? `${escapeHtml(meta)} · 左上角以原始尺寸顯示` : '';
   const srcBtn = showBtn
-    ? `<button class="mini-btn" type="button" onclick="ppSource(${showSource ? 'false' : 'true'})">${showSource ? 'hide source text' : 'show the text behind this image'}</button>`
+    ? `<button class="mini-btn" type="button" onclick="ppSource(${showSource ? 'false' : 'true'})">${showSource ? '隱藏原始文字' : '顯示這張圖背後的文字'}</button>`
     : '';
 
   let pane = '';
   if (showSource) {
     pane =
       sourceText == null
-        ? `<div class="evicted">source text wasn't captured for this image</div>`
+        ? `<div class="evicted">這張圖沒有留存原始文字</div>`
         : `<div class="pairing">` +
-          `<div class="pair-col"><div class="pair-head pair-img">What the model sees · image</div><div class="frame frame-sm"><img src="${imgSrc}" alt="rendered page" /></div></div>` +
-          `<div class="pair-mid">made from ↓</div>` +
-          `<div class="pair-col"><div class="pair-head pair-txt">The original text · byte-exact</div><pre class="src-pane">${escapeHtml(sourceText)}</pre></div>` +
+          `<div class="pair-col"><div class="pair-head pair-img">模型看到的內容 · 圖片</div><div class="frame frame-sm"><img src="${imgSrc}" alt="算繪後的頁面" /></div></div>` +
+          `<div class="pair-mid">來源 ↓</div>` +
+          `<div class="pair-col"><div class="pair-head pair-txt">原始文字 · 逐位元完全相同</div><pre class="src-pane">${escapeHtml(sourceText)}</pre></div>` +
           `</div>`;
   }
 
@@ -763,8 +763,8 @@ export function renderSessionsFragment(p: SessionsPayload): string {
   };
   const barPct = (v: number) => (max <= 0 || v <= 0 ? 0 : (v / max) * 100);
 
-  const status = `<div class="status">${all.length} session${all.length === 1 ? '' : 's'} tracked</div>`;
-  if (rows.length === 0) return status + `<div class="empty">No sessions yet.</div>`;
+  const status = `<div class="status">已追蹤 ${all.length} 個 session</div>`;
+  if (rows.length === 0) return status + `<div class="empty">目前還沒有 session。</div>`;
 
   const chart = rows
     .map((s) => {
@@ -784,7 +784,7 @@ export function renderSessionsFragment(p: SessionsPayload): string {
   return (
     status +
     `<div class="bars">${chart}</div>` +
-    `<div class="axis">tokens saved per session (cache-aware) · top ${rows.length} of ${all.length}</div>`
+    `<div class="axis">各 session 省下的 token（快取感知） · 前 ${rows.length} 名 / 共 ${all.length} 個</div>`
   );
 }
 
@@ -792,7 +792,7 @@ export function renderSessionsFragment(p: SessionsPayload): string {
 
 export function renderStatsTableFragment(p: FullStatsPayload): string {
   if (p.error || !p.summary) {
-    return `<div class="status">${escapeHtml(p.error || 'no data')}</div><table class="dtable"><tbody></tbody></table>`;
+    return `<div class="status">${escapeHtml(p.error || '無資料')}</div><table class="dtable"><tbody></tbody></table>`;
   }
   const s = p.summary;
   const totalIn = (s.inputTokensTotal || 0) + (s.cacheCreateTokensTotal || 0) + (s.cacheReadTokensTotal || 0);
@@ -802,31 +802,31 @@ export function renderStatsTableFragment(p: FullStatsPayload): string {
   const charRatio =
     s.origCharsTotal > 0 ? ((s.imageBytesTotal / s.origCharsTotal) * 100).toFixed(3) + 'x' : '-';
 
-  // NOTE: the literal word "requests" is asserted by tests.
+  // NOTE: the literal word "請求數" is asserted by tests.
   const tr = (k: string, v: string) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`;
   return (
-    `<div class="status">${numFmt(p.parsed)} events parsed from disk</div>` +
+    `<div class="status">從磁碟解析出 ${numFmt(p.parsed)} 筆事件</div>` +
     `<table class="dtable"><tbody>` +
-    tr('requests', numFmt(s.total)) +
+    tr('請求數', numFmt(s.total)) +
     tr('2xx / 4xx / 5xx', `${numFmt(s.ok2xx)} / ${numFmt(s.err4xx)} / ${numFmt(s.err5xx)}`) +
-    tr('compressed', numFmt(s.compressed)) +
-    tr('passthrough', numFmt(s.passthrough)) +
-    tr('input tokens', numFmt(s.inputTokensTotal)) +
-    tr('cache create', numFmt(s.cacheCreateTokensTotal)) +
-    tr('cache read', numFmt(s.cacheReadTokensTotal)) +
-    tr('cache hit (by tokens)', hitRateTok) +
-    tr('cache hit (by events)', hitRateEv) +
-    tr('original chars', numFmt(s.origCharsTotal)) +
-    tr('image bytes', numFmt(s.imageBytesTotal)) +
-    tr('bytes / char', charRatio) +
+    tr('已壓縮', numFmt(s.compressed)) +
+    tr('直通', numFmt(s.passthrough)) +
+    tr('輸入 token', numFmt(s.inputTokensTotal)) +
+    tr('快取建立', numFmt(s.cacheCreateTokensTotal)) +
+    tr('快取讀取', numFmt(s.cacheReadTokensTotal)) +
+    tr('快取命中（依 token）', hitRateTok) +
+    tr('快取命中（依事件）', hitRateEv) +
+    tr('原始字元數', numFmt(s.origCharsTotal)) +
+    tr('圖片位元組', numFmt(s.imageBytesTotal)) +
+    tr('位元組 / 字元', charRatio) +
     (s.pinEvents
       ? tr(
-          'pin footer (uncached)',
-          `${numFmt(s.pinCharsTotal ?? 0)} chars / ${numFmt(s.pinEvents)} req`,
+          'pin 頁尾（未快取）',
+          `${numFmt(s.pinCharsTotal ?? 0)} 字元 / ${numFmt(s.pinEvents)} 次請求`,
         )
       : '') +
-    tr('latency p50 / p95', `${numFmt(s.durationP50)} / ${numFmt(s.durationP95)} ms`) +
-    tr('first-byte p50 / p95', `${numFmt(s.firstByteP50)} / ${numFmt(s.firstByteP95)} ms`) +
+    tr('延遲 p50 / p95', `${numFmt(s.durationP50)} / ${numFmt(s.durationP95)} ms`) +
+    tr('首位元組 p50 / p95', `${numFmt(s.firstByteP50)} / ${numFmt(s.firstByteP95)} ms`) +
     `</tbody></table>`
   );
 }
@@ -1045,8 +1045,20 @@ const CSS = `
   .card-head.spaced { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
 
   /* x-ray */
-  .xray { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: start; }
-  @media (max-width: 1000px) { .xray { grid-template-columns: 1fr; } }
+  .xray { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: stretch; }
+  /* 左欄高度不由自己的內容決定：卡片脫離文件流（absolute），列高改由右欄的
+     「圖片與文字組成分析」決定，兩張卡片底部因此對齊，最近的請求清單再自行捲動。
+     min-height 是右欄很短時的地板值，避免左欄被壓到只剩表頭。 */
+  .xray-fit { position: relative; min-height: 320px; }
+  .xray-fit > .card { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .xray-fit #frag-recent { flex: 1; min-height: 0; overflow-y: auto; }
+  @media (max-width: 1000px) {
+    .xray { grid-template-columns: 1fr; }
+    /* 單欄時沒有可對齊的鄰居，改用視窗高度上限，維持同樣的「不跑版」效果。 */
+    .xray-fit { position: static; min-height: 0; }
+    .xray-fit > .card { position: static; }
+    .xray-fit #frag-recent { max-height: 60vh; }
+  }
 
   /* context map */
   .ctxmap { font-size: 13px; }
@@ -1106,6 +1118,8 @@ const CSS = `
      the card width (narrow x-ray column / small window); no scrollbar when
      they fit. The table keeps width:100% so it fills at wide widths. */
   #frag-recent, #frag-stats { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+  /* 卡片內捲時表頭要留在原地，否則捲到一半就看不出欄位意義 */
+  .xray-fit #frag-recent thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
   #frag-recent table, #frag-stats table { min-width: max-content; }
   #frag-latest { overflow: auto; scrollbar-width: thin; }
   th.num, td.num { text-align: right; }
@@ -1215,8 +1229,8 @@ const THEME_JS = `
       document.documentElement.dataset.theme = t;
       var b = document.getElementById('theme-btn');
       if (b) {
-        b.textContent = t === 'dark' ? '☀ Light' : '☾ Dark';
-        b.setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+        b.textContent = t === 'dark' ? '☀ 亮色' : '☾ 暗色';
+        b.setAttribute('aria-label', t === 'dark' ? '切換至亮色模式' : '切換至暗色模式');
       }
     }
     window.ppTheme = function () {
@@ -1262,47 +1276,47 @@ export function renderPage(port: number, hostLabel = ''): string {
     <div>
       <div class="wordmark-row">
         <div class="wordmark">pxpipe</div>
-        ${host ? `<span class="hostchip" title="proxy host">${host}</span>` : ''}
+        ${host ? `<span class="hostchip" title="proxy 主機">${host}</span>` : ''}
       </div>
-      <div class="tagline">See exactly what got turned into images to shrink your Claude Code bill.</div>
+      <div class="tagline">看清楚有哪些內容被轉成圖片，用來壓低你的 Claude Code 帳單。</div>
     </div>
   </div>
   <div class="controls">
-    <button type="button" id="theme-btn" class="theme-btn" onclick="ppTheme()" aria-label="Toggle dark mode" title="Toggle dark / light mode">☾ Dark</button>
+    <button type="button" id="theme-btn" class="theme-btn" onclick="ppTheme()" aria-label="切換深色模式" title="切換深色／淺色模式">☾ 深色</button>
     <div id="frag-toggle" hx-get="/fragments/toggle" hx-trigger="load, every 2s" hx-swap="innerHTML"></div>
   </div>
 </header>
 
 <details class="models-collapse">
-  <summary class="models-summary">Connect an agent <span class="hint">warp launches any CLI through this proxy · pin keeps instructions last in the request</span></summary>
-  <p>Warp starts the agent with the proxy already wired, no env or config edits:</p>
+  <summary class="models-summary">接上你的 agent <span class="hint">warp 讓任何 CLI 透過這個 proxy 啟動 · pin 讓指示固定排在請求最後</span></summary>
+  <p>warp 會直接把 proxy 接好再啟動 agent，不必改環境變數或設定檔：</p>
   <pre>pxpipe warp -- claude
 pxpipe warp -- codex
 pxpipe warp -- cursor-agent</pre>
-  <p>Aliases work too (<code>pxpipe warp -- pp</code>), and <code>--route PATTERN=http://host:port</code> adds routes beyond <code>api.anthropic.com</code> (a PATTERN that names a port matches only that port, e.g. <code>--route '127.0.0.1:8082/v1/*=http://127.0.0.1:${port}'</code> warps an agent pointed at another local proxy). Without warp, point the agent at <code>ANTHROPIC_BASE_URL=http://127.0.0.1:${port}</code> yourself.</p>
-  <p>Pin instructions from inside the session — they get moved to the end of every request, where the model actually reads them:</p>
-  <pre>@pxpipe pin be concise, no walls of text
+  <p>別名也可以用（<code>pxpipe warp -- pp</code>）；<code>--route PATTERN=http://host:port</code> 可以加上 <code>api.anthropic.com</code> 以外的路由（PATTERN 若指定了埠號就只比對該埠，例如 <code>--route '127.0.0.1:8082/v1/*=http://127.0.0.1:${port}'</code> 可以接管指向另一個本機 proxy 的 agent）。不用 warp 的話，就自行把 agent 指向 <code>ANTHROPIC_BASE_URL=http://127.0.0.1:${port}</code>。</p>
+  <p>在 session 內就能釘住指示 — 它們會被搬到每次請求的最後面，也就是模型真正會讀的位置：</p>
+  <pre>@pxpipe pin 回答簡潔一點，不要長篇大論
 @pxpipe unpin 2
 @pxpipe unpin all</pre>
-  <p><code>@pxpipe pin</code> with no text lists what is pinned.</p>
-  <p>A <code>@pxpipe pin …</code> line in your global or project <code>CLAUDE.md</code> (<code>AGENTS.md</code> under Codex / OpenCode) is relocated the same way, on every session, with no typing. Those are file-backed, so <code>unpin</code> and <code>unpin all</code> never touch them — edit the file to remove one.</p>
+  <p><code>@pxpipe pin</code> 後面不接文字，就會列出目前釘住的內容。</p>
+  <p>寫在全域或專案 <code>CLAUDE.md</code>（Codex / OpenCode 下為 <code>AGENTS.md</code>）裡的 <code>@pxpipe pin …</code> 也會照同樣方式搬移，每個 session 自動生效、不用手打。這類項目以檔案為準，所以 <code>unpin</code> 與 <code>unpin all</code> 都不會動到它們 — 要移除請直接改檔案。</p>
 </details>
 
 <details class="models-collapse">
-  <summary class="models-summary">Image model scope <span class="hint">Fable 5, Gemini 3.6 Flash, and Gemini 3.7 Flash by default · expand to experiment with other families</span></summary>
-  <div class="models-warning">⚠ Image compression is validated for Fable 5, Gemini 3.6 Flash, and Gemini 3.7 Flash — other families can use <strong>more</strong> tokens, not less. Opt in only for deliberate experiments.</div>
+  <summary class="models-summary">圖片壓縮適用模型 <span class="hint">預設為 Fable 5、Gemini 3.6 Flash 與 Gemini 3.7 Flash · 展開可試用其他模型家族</span></summary>
+  <div class="models-warning">⚠ 圖片壓縮只在 Fable 5、Gemini 3.6 Flash 與 Gemini 3.7 Flash 上驗證過 — 其他家族可能反而<strong>更耗</strong> token。除非是刻意實驗，否則不建議開啟。</div>
   <div id="frag-models" hx-get="/fragments/models" hx-trigger="load, every 2s [!document.activeElement || document.activeElement.id !== 'models-csv']" hx-swap="innerHTML"></div>
-  <div class="models-routing"><span class="hint">imaging scope ≠ provider routing — non-Anthropic IDs also need routing env on the proxy</span> <button class="mini-btn" type="button" onclick="document.getElementById('routing-help').showModal()">routing help</button></div>
+  <div class="models-routing"><span class="hint">壓縮適用範圍 ≠ 供應商路由 — 非 Anthropic 的模型 ID 還需要在 proxy 上設定路由環境變數</span> <button class="mini-btn" type="button" onclick="document.getElementById('routing-help').showModal()">路由說明</button></div>
 </details>
 
 <dialog id="routing-help" onclick="if (event.target === this) this.close()">
-  <h3>Routing Claude Code to OpenAI / Cloudflare models</h3>
-  <p>Claude models use Anthropic by default. Two optional routes can run together — set on the <strong>pxpipe process</strong> (keep provider credentials out of Claude Code):</p>
+  <h3>把 Claude Code 路由到 OpenAI / Cloudflare 模型</h3>
+  <p>Claude 模型預設走 Anthropic。以下兩種路由可同時啟用，設定在 <strong>pxpipe 行程</strong>上（供應商憑證不必進 Claude Code）：</p>
   <ul>
-    <li><code>OPENAI_MODELS</code> — exact model IDs routed to OpenAI Responses (<code>OPENAI_UPSTREAM</code> + <code>OPENAI_API_KEY</code>)</li>
-    <li><code>CLOUDFLARE_MODELS</code> — exact model IDs routed to Cloudflare's OpenAI-compatible endpoint (<code>CLOUDFLARE_ACCOUNT_ID</code> + <code>CLOUDFLARE_API_TOKEN</code>)</li>
+    <li><code>OPENAI_MODELS</code> — 精確比對的模型 ID，路由到 OpenAI Responses（<code>OPENAI_UPSTREAM</code> + <code>OPENAI_API_KEY</code>）</li>
+    <li><code>CLOUDFLARE_MODELS</code> — 精確比對的模型 ID，路由到 Cloudflare 的 OpenAI 相容端點（<code>CLOUDFLARE_ACCOUNT_ID</code> + <code>CLOUDFLARE_API_TOKEN</code>）</li>
   </ul>
-  <p>If a model appears in both lists: <code>CLOUDFLARE_MODELS &gt; OPENAI_MODELS &gt; default routing</code>.</p>
+  <p>同一個模型同時出現在兩份清單時，優先序為：<code>CLOUDFLARE_MODELS &gt; OPENAI_MODELS &gt; 預設路由</code>。</p>
   <pre>OPENAI_UPSTREAM=https://api.openai.com \\
 OPENAI_API_KEY=your-openai-key \\
 OPENAI_MODELS=gpt-5.6-sol \\
@@ -1310,28 +1324,30 @@ CLOUDFLARE_ACCOUNT_ID=your-account-id \\
 CLOUDFLARE_API_TOKEN=your-cloudflare-token \\
 CLOUDFLARE_MODELS=moonshotai/kimi-k3 \\
 npx pxpipe-proxy</pre>
-  <p>Non-Anthropic IDs are advertised with a <code>claude-</code> prefix because Claude Code needs a Claude-shaped ID; pxpipe strips it before forwarding. Switch to one inside Claude Code with <code>/model claude-&lt;model&gt;</code> — e.g. <code>/model claude-moonshotai/kimi-k3</code> — or launch with <code>claude --model claude-moonshotai/kimi-k3</code>. Verify discovery with <code>curl …/v1/models</code>.</p>
-  <p><code>PXPIPE_MODELS</code> above is separate: it controls image compression, not routing. Kimi K3 on Cloudflare is the only non-Anthropic model tested end to end — see <code>docs/CLAUDE_CODE_PROVIDER_ROUTING.md</code>.</p>
-  <button class="mini-btn" type="button" onclick="this.closest('dialog').close()">close</button>
+  <p>非 Anthropic 的模型 ID 會加上 <code>claude-</code> 前綴對外公告，因為 Claude Code 只認 Claude 形式的 ID；pxpipe 轉發前會把前綴拿掉。在 Claude Code 內用 <code>/model claude-&lt;model&gt;</code> 切換 — 例如 <code>/model claude-moonshotai/kimi-k3</code> — 或啟動時帶 <code>claude --model claude-moonshotai/kimi-k3</code>。可用 <code>curl …/v1/models</code> 確認有沒有被列出。</p>
+  <p>上面的 <code>PXPIPE_MODELS</code> 是另一回事：它控制圖片壓縮，不是路由。Cloudflare 上的 Kimi K3 是唯一完整測過的非 Anthropic 模型 — 詳見 <code>docs/CLAUDE_CODE_PROVIDER_ROUTING.md</code>。</p>
+  <button class="mini-btn" type="button" onclick="this.closest('dialog').close()">關閉</button>
 </dialog>
 
 <div id="frag-session" hx-get="/fragments/session-summary" hx-trigger="load, every 2s" hx-swap="innerHTML">
-  <div class="hero hero-empty"><div class="hero-headline">Connecting…</div></div>
+  <div class="hero hero-empty"><div class="hero-headline">連線中…</div></div>
 </div>
 
 <div id="frag-header" hx-get="/fragments/header" hx-trigger="load, every 2s" hx-swap="innerHTML"></div>
 
 <section class="section">
-  <h2 class="section-head">What happened to your context <span class="section-sub">click a request to see image vs text</span></h2>
+  <h2 class="section-head">你的 context 發生了什麼事 <span class="section-sub">點選單筆請求，看圖片與純文字的組成</span></h2>
   <div class="xray">
-    <div class="card">
-      <h3 class="card-head">Recent requests</h3>
-      <div id="frag-recent" hx-get="/fragments/recent" hx-trigger="load, every 2s" hx-swap="innerHTML"></div>
+    <div class="xray-fit">
+      <div class="card">
+        <h3 class="card-head">最近的請求</h3>
+        <div id="frag-recent" hx-get="/fragments/recent" hx-trigger="load, every 2s" hx-swap="innerHTML"></div>
+      </div>
     </div>
     <div class="card">
-      <h3 class="card-head">Image vs text breakdown</h3>
+      <h3 class="card-head">圖片與文字組成分析</h3>
       <div id="frag-context-map" hx-get="/fragments/context-map" hx-trigger="load" hx-swap="innerHTML"></div>
-      <h3 class="card-head spaced">Image ↔ source inspector</h3>
+      <h3 class="card-head spaced">圖片 ↔ 原始文字對照</h3>
       <div id="frag-latest" hx-get="/fragments/latest" hx-trigger="load, every 2s, pp-refresh" hx-swap="innerHTML"
            hx-vals='js:{pin: window.pp.pin == null ? "" : window.pp.pin, source: window.pp.src ? "1" : ""}'></div>
     </div>
@@ -1339,14 +1355,14 @@ npx pxpipe-proxy</pre>
 </section>
 
 <section class="section">
-  <h2 class="section-head">Top sessions <span class="section-sub">by tokens saved</span></h2>
+  <h2 class="section-head">Session 排行 <span class="section-sub">依節省的 token 數排序</span></h2>
   <div class="card">
     <div id="frag-sessions" hx-get="/fragments/sessions" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
   </div>
 </section>
 
 <section class="section">
-  <h2 class="section-head">Full history <span class="section-sub">every event on disk</span></h2>
+  <h2 class="section-head">完整歷史 <span class="section-sub">磁碟上的所有事件</span></h2>
   <div class="card">
     <div id="frag-stats" hx-get="/fragments/stats" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
   </div>
@@ -1355,7 +1371,7 @@ npx pxpipe-proxy</pre>
 <div class="tray" x-data="{ toasts: [], next: 1 }"
      @pp-toast.window="const id = next++; toasts.push({ id, text: $event.detail.text }); setTimeout(() => toasts = toasts.filter(t => t.id !== id), 5000)">
   <template x-for="t in toasts" :key="t.id">
-    <div class="toast"><span x-text="t.text"></span><button type="button" @click="toasts = toasts.filter(x => x.id !== t.id)" aria-label="dismiss">&times;</button></div>
+    <div class="toast"><span x-text="t.text"></span><button type="button" @click="toasts = toasts.filter(x => x.id !== t.id)" aria-label="關閉">&times;</button></div>
   </template>
 </div>
 

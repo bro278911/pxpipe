@@ -67,8 +67,8 @@ describe('restart restore (replay)', () => {
     const url = new URL(`http://x/fragments/context-map?req=${row.img_id}`);
     const html = await (await dash.serveFragment('context-map', url, 1234)).text();
     expect(html).toContain('ctx-headline'); // breakdown rendered…
-    expect(html).not.toContain("isn't kept anymore"); // …not the evicted-fallback note
-    expect(html).toContain('thumbnails expired'); // honest about the gone PNGs
+    expect(html).not.toContain('不再保留'); // …not the evicted-fallback note
+    expect(html).toContain('縮圖已過期'); // honest about the gone PNGs
   });
 
   it('gives uncompressed rows no Details link', async () => {
