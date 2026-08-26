@@ -21,7 +21,7 @@ export const GEMINI_3_6_FLASH_PROFILE: GptModelProfile = {
   minCompressTokens: 500,
   factSheetFormat: 'compact',
   history: {
-    maxImages: 72,
+    maxImages: 32,
     keepTail: 4,
     keepRecentPairs: 4,
     minCollapseTokens: 2000,

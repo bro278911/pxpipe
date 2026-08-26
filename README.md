@@ -122,7 +122,7 @@ pxpipe warp -- claude          # 也可以：cursor-agent、codex 或 shell alia
 `api.anthropic.com/v1/messages` 為預設路由。透過其他 base URL 連接提供者的 Agent 需另行設定規則，指定 port 的規則只匹配該 port：
 
 ```bash
-pxpipe warp --route '127.0.0.1:8082/v1/*=http://127.0.0.1:47821' -- codex
+pxpipe warp --route '127.0.0.1:9090/v1/*=http://127.0.0.1:47821' -- codex
 ```
 
 ## Offline export (no proxy)
@@ -177,6 +177,7 @@ npx pxpipe-proxy export --git
 | `grok-4.5` | **100/100** | **97/98** | 17/18 | **0/16** | 0/15 | 原生 14px/84 品質套件（即時設定檔）；[品質](eval/grok-density/QUALITY_RESULTS.md)，[native-sweep](eval/grok-density/native-sweep/RESULTS.md) |
 | `grok-4.6` high | **100/100** | **97/98** | 17/18 | **0/16** | 0/15 | 原生 14px/84，reasoning high；[品質](eval/grok-profile/QUALITY_RESULTS.md) |
 | `moonshotai/kimi-k3` | 79/100 | 84/98 | 15/18 | 1/16 | 0/15 | 通用 GPT 設定檔：[品質結果](eval/sol-profile/KIMI_K3_QUALITY_RESULTS.md) |
+| `qwen-3.8` (`@cf/qwen/qwen3.8-27b`) | 98/100 | 72/98 | 11/18 | **0/16** | 0/15 | 前期 5×8 完整套件（十六進位 0/15）；原生 14px 試驗：精確 8/8，0 幻覺，十六進位 11/15：[試驗與品質](eval/qwen-profile/QUALITY_RESULTS.md) |
 
 ### Native-profile cost check
 

@@ -1293,7 +1293,7 @@ export function renderPage(port: number, hostLabel = ''): string {
   <pre>pxpipe warp -- claude
 pxpipe warp -- codex
 pxpipe warp -- cursor-agent</pre>
-  <p>別名也可以用（<code>pxpipe warp -- pp</code>）；<code>--route PATTERN=http://host:port</code> 可以加上 <code>api.anthropic.com</code> 以外的路由（PATTERN 若指定了埠號就只比對該埠，例如 <code>--route '127.0.0.1:8082/v1/*=http://127.0.0.1:${port}'</code> 可以接管指向另一個本機 proxy 的 agent）。不用 warp 的話，就自行把 agent 指向 <code>ANTHROPIC_BASE_URL=http://127.0.0.1:${port}</code>。</p>
+  <p>別名也可以用（<code>pxpipe warp -- pp</code>）；<code>--route PATTERN=http://host:port</code> 可以加上 <code>api.anthropic.com</code> 以外的路由（PATTERN 若指定了埠號就只比對該埠，例如 <code>--route '127.0.0.1:9090/v1/*=http://127.0.0.1:${port}'</code> 可以接管指向另一個本機 proxy 的 agent）。不用 warp 的話，就自行把 agent 指向 <code>ANTHROPIC_BASE_URL=http://127.0.0.1:${port}</code>。</p>
   <p>在 session 內就能釘住指示 — 它們會被搬到每次請求的最後面，也就是模型真正會讀的位置：</p>
   <pre>@pxpipe pin 回答簡潔一點，不要長篇大論
 @pxpipe unpin 2
