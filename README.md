@@ -264,6 +264,13 @@ pnpm install && pnpm test
 pnpm run build                # 重新生成 dist/
 ```
 
+本地開發時，可使用下列指令啟動服務：
+
+```bash
+pnpm run dev:node             # 啟動 Node.js proxy，並監看原始碼變更
+pnpm run dev:worker           # 啟動 Cloudflare Worker 本地開發伺服器
+```
+
 Windows 由社群支援：主要開發目標為 macOS/Linux，Windows 專屬修復依賴貢獻者的 PR（感謝 @makoribrian）。
 
 ## FAQ
