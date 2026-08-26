@@ -57,6 +57,51 @@ normally — pxpipe compresses the *request* only, never the model's output.
 Recent turns stay text; the system prompt, tool docs, and older bulk history
 are imaged.
 
+### Windows (PowerShell)
+
+Windows is community-supported. Use two PowerShell windows: keep pxpipe
+running in the first, then start your agent from the second. Node.js 20.19 or
+newer is required.
+
+```powershell
+# PowerShell window 1: start the local proxy.
+npx pxpipe-proxy
+```
+
+For Claude Code, set the Anthropic base URL only for the current PowerShell
+session, then start Claude normally:
+
+```powershell
+# PowerShell window 2
+$env:ANTHROPIC_BASE_URL = 'http://127.0.0.1:47821'
+claude
+
+# Optional: remove the setting after Claude exits.
+$env:ANTHROPIC_BASE_URL = $null
+```
+
+For Codex or another OpenAI-compatible client, point its OpenAI base URL at
+pxpipe's `/v1` endpoint instead:
+
+```powershell
+# PowerShell window 2
+$env:OPENAI_BASE_URL = 'http://127.0.0.1:47821/v1'
+codex
+
+# Optional: remove the setting after Codex exits.
+$env:OPENAI_BASE_URL = $null
+```
+
+Do not save either URL permanently with `setx` or the Windows Environment
+Variables UI: the agent will fail to reach its provider whenever the local
+proxy is not running. pxpipe forwards the agent's existing provider
+credentials; only set `OPENAI_API_KEY` on the pxpipe process when you
+intentionally need to override the client's key.
+
+`pxpipe warp` is the preferred path on macOS/Linux because it preserves
+Claude Code's first-party connection checks. Its current shell integration is
+POSIX-oriented, so use the PowerShell setup above on Windows.
+
 ### `pxpipe warp`
 
 ```bash
