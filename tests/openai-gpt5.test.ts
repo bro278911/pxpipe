@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { isPxpipeSupportedGptModel } from '../src/core/applicability.js';
 import { openAIVisionTokens, visionTokensForModel, isClaudeModel, resolveVisionCost, transformOpenAIChatCompletions, transformOpenAIResponses } from '../src/core/openai.js';
-import { resolveGptProfile } from '../src/core/gpt-model-profiles.js';
+import { resolveGptProfile, isMisresolvedModelId } from '../src/core/gpt-model-profiles.js';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -1028,11 +1028,31 @@ describe('image parts request detail = "original" (avoid downscale of dense text
     const result = await transformOpenAIChatCompletions(body, { charsPerToken: 1, minCompressChars: 1 });
     expect(result.info.compressed).toBe(true);
     const out = JSON.parse(dec.decode(result.body)) as { messages: Array<{ role: string; content: unknown }> };
-    const firstUser = out.messages.find((m) => m.role === 'user')!;
+    const firstUser = out.messages.find((m) => m.role === 'user');
+    if (!firstUser) throw new Error('transformed output has no user item');
     const parts = firstUser.content as Array<{ type: string; image_url?: { detail?: string } }>;
     const imgs = parts.filter((p) => p.type === 'image_url');
     expect(imgs.length).toBeGreaterThan(0);
     for (const p of imgs) expect(p.image_url!.detail).toBe('original');
+  });
+
+  it('Chat Completions image_url parts use detail:"high" for non-gpt5 models (Workers AI / Qwen / GPT-4o)', async () => {
+    const body = enc.encode(JSON.stringify({
+      model: 'workers-ai/@cf/qwen/qwen3.8-27b',
+      messages: [
+        { role: 'system', content: BIG_SYSTEM },
+        { role: 'user', content: 'hello' },
+      ],
+    }));
+    const result = await transformOpenAIChatCompletions(body, { charsPerToken: 1, minCompressChars: 1 });
+    expect(result.info.compressed).toBe(true);
+    const out = JSON.parse(dec.decode(result.body)) as { messages: Array<{ role: string; content: unknown }> };
+    const firstUser = out.messages.find((m) => m.role === 'user');
+    if (!firstUser) throw new Error('transformed output has no user item');
+    const parts = firstUser.content as Array<{ type: string; image_url?: { detail?: string } }>;
+    const imgs = parts.filter((p) => p.type === 'image_url');
+    expect(imgs.length).toBeGreaterThan(0);
+    for (const p of imgs) expect(p.image_url!.detail).toBe('high');
   });
 
   it('Responses input_image parts use detail:"original"', async () => {
@@ -1044,11 +1064,29 @@ describe('image parts request detail = "original" (avoid downscale of dense text
     const result = await transformOpenAIResponses(body, { charsPerToken: 1, minCompressChars: 1 });
     expect(result.info.compressed).toBe(true);
     const out = JSON.parse(dec.decode(result.body)) as { input: Array<{ role?: string; content?: unknown }> };
-    const firstUser = out.input.find((m) => m.role === 'user')!;
+    const firstUser = out.input.find((m) => m.role === 'user');
+    if (!firstUser) throw new Error('transformed output has no user item');
     const parts = firstUser.content as Array<{ type: string; detail?: string }>;
     const imgs = parts.filter((p) => p.type === 'input_image');
     expect(imgs.length).toBeGreaterThan(0);
     for (const p of imgs) expect(p.detail).toBe('original');
+  });
+
+  it('Responses input_image parts use detail:"high" for non-gpt5 models', async () => {
+    const body = enc.encode(JSON.stringify({
+      model: 'workers-ai/@cf/qwen/qwen3.8-27b',
+      instructions: BIG_INSTRUCTIONS,
+      input: [{ role: 'user', content: [{ type: 'input_text', text: 'hello' }] }],
+    }));
+    const result = await transformOpenAIResponses(body, { charsPerToken: 1, minCompressChars: 1 });
+    expect(result.info.compressed).toBe(true);
+    const out = JSON.parse(dec.decode(result.body)) as { input: Array<{ role?: string; content?: unknown }> };
+    const firstUser = out.input.find((m) => m.role === 'user');
+    if (!firstUser) throw new Error('transformed output has no user item');
+    const parts = firstUser.content as Array<{ type: string; detail?: string }>;
+    const imgs = parts.filter((p) => p.type === 'input_image');
+    expect(imgs.length).toBeGreaterThan(0);
+    for (const p of imgs) expect(p.detail).toBe('high');
   });
 });
 
@@ -1171,6 +1209,74 @@ describe('resolveGptProfile (Grok)', () => {
     // 84 cols × 9px + padding = 764px short-side floor.
     expect(result.info.firstImageWidth).toBe(764);
     expect(result.info.firstImageHeight ?? 0).toBeLessThanOrEqual(512);
+  });
+});
+
+describe('resolveGptProfile (Qwen)', () => {
+  it('uses native 14px packing and the 32-image provider cap', () => {
+    const p = resolveGptProfile('workers-ai/@cf/qwen/qwen3.8-27b');
+    expect(p.stripCols).toBe(84);
+    expect(p.maxHeightPx).toBe(512);
+    expect(p.style.font).toBe('jetbrains-mono-14');
+    expect(p.history.maxImages).toBe(32);
+    expect(p.history.keepTail).toBe(1);
+    expect(p.providerImageCap).toBe(32);
+    // Keyed to the exact measured model id, not to any 'qwen' substring.
+    expect(resolveGptProfile('qwen3.8-27b').stripCols).toBe(84);
+  });
+
+  it('refuses unmeasured Qwen variants instead of applying this profile', () => {
+    for (const id of ['qwen2.5-72b-instruct', 'qwen3-30b', 'qwen-3.8-27b']) {
+      expect(resolveGptProfile(id).stripCols).not.toBe(84);
+      expect(isMisresolvedModelId(id)).toBe(true);
+    }
+  });
+});
+
+describe('Qwen provider image cap — dynamic history budget', () => {
+  it('budgets history against 32 minus the images already in the request', async () => {
+    const tinyPng = { url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' };
+    const messages = buildChatMessages(20);
+    // The client attached 24 images to the live request, outside collapsed history.
+    messages.at(-1)!.content = [
+      { type: 'text', text: messages.at(-1)!.content },
+      ...Array.from({ length: 24 }, () => ({ type: 'image_url', image_url: tinyPng })),
+    ];
+    const result = await transformOpenAIChatCompletions(
+      enc.encode(JSON.stringify({ model: 'workers-ai/@cf/qwen/qwen3.8-27b', messages })),
+      { charsPerToken: 1, minCompressChars: 1 },
+    );
+    expect(result.info.compressed).toBe(true);
+    expect(result.info.historyReason).toBe('collapsed');
+    // With the old subtractive budget (24 − 24 − slab) this would be 0.
+    expect(result.info.collapsedImages ?? 0).toBeGreaterThan(0);
+
+    const out = JSON.parse(dec.decode(result.body)) as { messages: Array<{ role: string; content: unknown }> };
+    let totalImages = 0;
+    for (const m of out.messages) {
+      if (Array.isArray(m.content)) {
+        totalImages += (m.content as Array<{ type?: string }>).filter((p) => p.type === 'image_url').length;
+      }
+    }
+    expect(JSON.stringify(out.messages).match(/iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ/g)?.length).toBe(24);
+    expect(totalImages).toBeLessThanOrEqual(32);
+  });
+
+  it('keeps static context native when client images leave insufficient headroom', async () => {
+    const tinyPng = { url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' };
+    const messages: Array<Record<string, unknown>> = [
+      { role: 'system', content: BIG_SLAB },
+      {
+        role: 'user',
+        content: Array.from({ length: 31 }, () => ({ type: 'image_url', image_url: tinyPng })),
+      },
+    ];
+    const body = enc.encode(JSON.stringify({ model: 'workers-ai/@cf/qwen/qwen3.8-27b', messages }));
+    const result = await transformOpenAIChatCompletions(body, { minCompressChars: 1 });
+
+    expect(result.info.compressed).toBe(false);
+    expect(result.info.reason).toBe('provider_image_cap');
+    expect(result.body).toEqual(body);
   });
 });
 

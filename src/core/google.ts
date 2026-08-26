@@ -28,6 +28,7 @@ import {
 } from './openai.js';
 import { factSheetText } from './factsheet.js';
 import { stripSchemaDescriptions } from './schema-strip.js';
+import { relocateGooglePins } from './pin.js';
 
 export interface GooglePart {
   text?: string;
@@ -168,46 +169,36 @@ function cleanGeminiFunctionCall(fc: unknown): { cleaned: Record<string, unknown
   return { cleaned: rec, changed: false };
 }
 
-/** Copy a turn or session's existing signature onto unsigned sibling functionCall parts. Does not invent one. */
-function stampGeminiThoughtSignatures(contents: GoogleContent[]): GoogleContent[] {
+/** Normalize signature placement without changing Gemini's signed part sequence. */
+function normalizeGeminiThoughtSignatures(contents: GoogleContent[]): GoogleContent[] {
   let changed = false;
-  let lastKnownDonor: string | undefined;
 
   const next = contents.map((content) => {
     if (!Array.isArray(content.parts) || content.parts.length === 0) return content;
-    // Find donor from ANY part in this turn (thought part, text part, functionCall part)
-    const turnDonor = content.parts
-      .map(readGeminiThoughtSignature)
-      .find((sig) => sig !== undefined);
-
-    const donor = turnDonor ?? lastKnownDonor;
-    if (turnDonor) {
-      lastKnownDonor = turnDonor;
-    }
-    if (!donor) return content;
 
     let partsChanged = false;
     const parts = content.parts.map((part) => {
       if (!isGeminiFunctionCallPart(part)) return part;
       const rec = record(part) ?? {};
       const { cleaned: fc, changed: fcChanged } = cleanGeminiFunctionCall(rec.functionCall);
-      const existing = readGeminiThoughtSignature(part);
-      const sigToUse = existing ?? donor;
-      if (!sigToUse) {
+      const signature = readGeminiThoughtSignature(part);
+      const hasCanonicalSignature = readString(rec.thoughtSignature) === signature;
+      const hasLegacySignature = 'thought_signature' in rec || 'signature' in rec;
+      if (!signature) {
         if (fcChanged) {
           partsChanged = true;
           return { ...rec, functionCall: fc };
         }
         return part;
       }
-      const directSig = readString(rec.thoughtSignature) ?? readString(rec.thought_signature);
-      if (directSig === sigToUse && !fcChanged) {
+      if (hasCanonicalSignature && !hasLegacySignature && !fcChanged) {
         return part;
       }
+      const { thought_signature, signature: legacySignature, ...rest } = rec;
       partsChanged = true;
       return {
-        ...rec,
-        thoughtSignature: sigToUse,
+        ...rest,
+        thoughtSignature: signature,
         ...(fc ? { functionCall: fc } : {}),
       };
     });
@@ -667,9 +658,14 @@ export async function transformGoogleGenerateContent(
   const req = reqRecord as GoogleGenerateContentRequest;
 
   const info = createDefaultInfo(modelName);
+  const pinChars = relocateGooglePins(req);
+  if (pinChars > 0) info.pinChars = pinChars;
+  const pinBody = pinChars > 0
+    ? new TextEncoder().encode(JSON.stringify(req))
+    : bodyBytes;
   if (options.compress === false) {
     info.reason = 'compression_disabled';
-    return withStampedThoughtSignatures(req, bodyBytes, info);
+    return withStampedThoughtSignatures(req, pinBody, info);
   }
 
   // Extract system instructions
@@ -677,12 +673,12 @@ export async function transformGoogleGenerateContent(
   const systemInstruction = record(req.systemInstruction);
   const systemParts = systemInstruction?.parts;
   if (systemParts !== undefined && !Array.isArray(systemParts)) {
-    return { body: bodyBytes, info };
+    return { body: pinBody, info };
   }
   if (Array.isArray(systemParts)) {
     for (const rawPart of systemParts) {
       const part = record(rawPart);
-      if (!part) return { body: bodyBytes, info };
+      if (!part) return { body: pinBody, info };
       if (typeof part.text === 'string' && part.text.trim()) {
         systemTexts.push(part.text);
         info.staticChars += part.text.length;
@@ -757,12 +753,12 @@ export async function transformGoogleGenerateContent(
   // Prepare transformed request. Plan history against the ORIGINAL contents;
   // inserting the slab image first would make content[0] an opaque image barrier.
   if (req.contents !== undefined && !Array.isArray(req.contents)) {
-    return { body: bodyBytes, info: createDefaultInfo(modelName) };
+    return { body: pinBody, info: createDefaultInfo(modelName) };
   }
   const originalContents = Array.isArray(req.contents) ? [...req.contents] : [];
   for (const content of originalContents) {
     if (!record(content) || (content.parts !== undefined && !Array.isArray(content.parts))) {
-      return { body: bodyBytes, info: createDefaultInfo(modelName) };
+      return { body: pinBody, info: createDefaultInfo(modelName) };
     }
   }
 
@@ -811,7 +807,7 @@ export async function transformGoogleGenerateContent(
     } else if (!staticProfitable) {
       info.reason = 'not_profitable';
     }
-    return withStampedThoughtSignatures(req, bodyBytes, info);
+    return withStampedThoughtSignatures(req, pinBody, info);
   }
 
   if (hasStaticCompression) {
@@ -830,7 +826,7 @@ export async function transformGoogleGenerateContent(
     }
   }
 
-  const normalizedContents = stampGeminiThoughtSignatures(normalizeGoogleTurnRoles(contents));
+  const normalizedContents = normalizeGeminiThoughtSignatures(normalizeGoogleTurnRoles(contents));
 
   // Keep a native system-level pointer so the imaged instruction retains its
   // original authority instead of being demoted to ordinary user content.
@@ -939,10 +935,10 @@ function withStampedThoughtSignatures(
   const normalized = isNormalizedGoogleTurnRoles(req.contents)
     ? req.contents
     : normalizeGoogleTurnRoles(req.contents);
-  const stamped = stampGeminiThoughtSignatures(normalized);
-  if (stamped === req.contents && normalized === req.contents) return { body: bodyBytes, info };
+  const normalizedSignatures = normalizeGeminiThoughtSignatures(normalized);
+  if (normalizedSignatures === req.contents && normalized === req.contents) return { body: bodyBytes, info };
   return {
-    body: new TextEncoder().encode(JSON.stringify({ ...req, contents: stamped })),
+    body: new TextEncoder().encode(JSON.stringify({ ...req, contents: normalizedSignatures })),
     info,
   };
 }
