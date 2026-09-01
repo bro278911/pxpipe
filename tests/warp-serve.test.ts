@@ -67,6 +67,60 @@ describe('createWarpHandlerSet', () => {
   });
 });
 
+describe('loopback guard', () => {
+  // The guard used to sit on an ephemeral proxy bound to 127.0.0.1, where the
+  // bind was the real protection. It now sits on the main port, which an
+  // operator can bind to 0.0.0.0, so the check is the only thing standing
+  // between a stranger on the LAN and an open relay. Pin both handlers.
+  const offHost = { remoteAddress: '192.168.1.50' };
+
+  it('refuses CONNECT from a non-loopback client', () => {
+    const { handlers } = createWarpHandlerSet({ port: 47821, caDir });
+    let written = '';
+    let tunnelled = false;
+    const socket = {
+      end: (chunk?: string) => {
+        written += chunk ?? '';
+      },
+      // A tunnel would have to pipe; if the guard leaks, these fire instead.
+      write: () => {
+        tunnelled = true;
+      },
+      pipe: () => {
+        tunnelled = true;
+      },
+      on: () => socket,
+    };
+    handlers.handleConnect(
+      { socket: offHost, url: 'api.anthropic.com:443' } as never,
+      socket as never,
+      Buffer.alloc(0),
+    );
+    expect(written).toContain('403 Forbidden');
+    expect(tunnelled).toBe(false);
+  });
+
+  it('refuses an absolute-form request from a non-loopback client', () => {
+    const { handlers } = createWarpHandlerSet({ port: 47821, caDir });
+    let status = 0;
+    let body = '';
+    const res = {
+      writeHead: (code: number) => {
+        status = code;
+      },
+      end: (chunk?: string) => {
+        body = chunk ?? '';
+      },
+    };
+    handlers.handleAbsoluteForm(
+      { socket: offHost, url: 'http://api.anthropic.com/v1/messages' } as never,
+      res as never,
+    );
+    expect(status).toBe(403);
+    expect(body).toContain('loopback-only');
+  });
+});
+
 describe('CONNECT on the main server', () => {
   it('tunnels a host no route matches, so non-agent traffic still works', async () => {
     // A local echo stands in for the real upstream: the tunnel is what is
@@ -102,7 +156,9 @@ describe('CONNECT on the main server', () => {
         }
       });
       socket.on('error', reject);
-      setTimeout(() => reject(new Error('tunnel timed out')), 5000).unref();
+      // Generous: this only has to beat a hang. A tight bound turns a loaded
+      // machine into a red suite.
+      setTimeout(() => reject(new Error('tunnel timed out')), 15000).unref();
     });
 
     expect(reply).toBe('ping');
