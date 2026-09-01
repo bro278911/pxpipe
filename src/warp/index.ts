@@ -21,7 +21,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import { CertificateAuthority } from './ca.js';
-import { createWarpHandlers } from './connect.js';
+import { createWarpHandlers, type WarpHandlers } from './connect.js';
 import { planSpawn } from './launch.js';
 import { parseRoute, routeDestination, type Route } from './route.js';
 
@@ -50,19 +50,50 @@ function defaultRoutes(port: number): Route[] {
   return [parseRoute(`api.anthropic.com/v1/messages*=http://127.0.0.1:${port}`)];
 }
 
-export function createWarpRuntime(options: WarpRuntimeOptions): WarpRuntime {
-  const { port } = options;
+export interface WarpHandlerSetOptions extends WarpRuntimeOptions {
+  /** Where the local CA is kept. Defaults to ~/.pxpipe; tests override it. */
+  caDir?: string;
+  /** Called for each diverted request, for logging. */
+  onDivert?: (host: string, path: string, target: string) => void;
+}
+
+export interface WarpHandlerSet {
+  handlers: WarpHandlers;
+  ca: CertificateAuthority;
+  routes: Route[];
+}
+
+/**
+ * The diversion machinery on its own, with no child process attached: routes,
+ * CA, and the two handlers. `warp` binds this to an ephemeral port that only
+ * one child can see; the main pxpipe server binds it to its own fixed port, so
+ * a single HTTPS_PROXY value works for every agent on the machine.
+ */
+export function createWarpHandlerSet(options: WarpHandlerSetOptions): WarpHandlerSet {
   // Explicit rules first: an operator route for a specific host:port must win
   // over anything built in.
   const routes = [
     ...(options.routes ?? []).map((spec) => parseRoute(spec)),
-    ...defaultRoutes(port),
+    ...defaultRoutes(options.port),
   ];
-  const ca = CertificateAuthority.loadOrCreate(join(homedir(), '.pxpipe'));
+  const ca = CertificateAuthority.loadOrCreate(options.caDir ?? join(homedir(), '.pxpipe'));
+  const handlers = createWarpHandlers({ routes, ca, onDivert: options.onDivert });
+  return { handlers, ca, routes };
+}
 
-  const handlers = createWarpHandlers({
-    routes,
-    ca,
+/**
+ * Absolute-form request targets (`GET http://host/path`) only ever reach a
+ * forward proxy; the dashboard and the API are addressed in origin form, so
+ * this is what separates the two roles on a shared port. A protocol-relative
+ * path is origin form and must not be claimed here.
+ */
+export function isForwardProxyRequest(url: string | undefined): boolean {
+  return url !== undefined && /^https?:\/\//i.test(url);
+}
+
+export function createWarpRuntime(options: WarpRuntimeOptions): WarpRuntime {
+  const { handlers, ca, routes } = createWarpHandlerSet({
+    ...options,
     // The child inherits this terminal and Claude Code draws a full-screen TUI
     // over it, so anything written after the child starts corrupts the display.
     // Keep the line when stdout is redirected (piping, CI, debugging); stay

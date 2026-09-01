@@ -107,9 +107,32 @@ Remove-ItemProperty -Path 'HKCU:\Environment' -Name 'OPENAI_BASE_URL' -ErrorActi
 若是在同一個已開啟的 PowerShell 立即還原，請一併執行上方的
 `$env:... = $null` 兩行；否則該視窗仍會保留舊值，直到關閉為止。
 
-`pxpipe warp` 是 macOS/Linux 的建議方式，因為它會保留 Claude Code 的
-第一方連線檢查。其目前 shell 整合以 POSIX 為主，因此 Windows 請使用上述
-PowerShell 設定方式。
+設定 `ANTHROPIC_BASE_URL` 會讓 Claude Code 認定自己並未連線到第一方 API，
+因而停用 `/remote-control` 與 claude.ai 連接器。若需保留這些功能，請改用
+下列兩種轉送 proxy 方式之一。
+
+### 轉送 proxy（保留第一方功能）
+
+pxpipe 的主 port 同時也是一個 CONNECT 轉送 proxy，因此 Agent 可以透過
+`HTTPS_PROXY` 而非 base URL 連線 —— 它眼中連線目標仍是 `api.anthropic.com`，
+第一方檢查照常通過，而 `/v1/messages` 會在本機被導向 pxpipe 記帳。轉送
+proxy 僅接受 loopback 來源的連線。
+
+Claude Code 只需在 `~/.claude/settings.json` 設定一次，之後每個視窗自動生效：
+
+```json
+{
+  "env": {
+    "HTTPS_PROXY": "http://127.0.0.1:47821",
+    "NODE_EXTRA_CA_CERTS": "C:\\Users\\<you>\\.pxpipe\\warp-ca.pem"
+  }
+}
+```
+
+CA 憑證路徑會在 proxy 啟動時印出。該 CA 只用於簽發本機攔截用的憑證，
+不會安裝到系統憑證存放區。
+
+proxy 未執行時 Agent 會連不上提供者，因此此設定適合固定讓 pxpipe 常駐的情況。
 
 ### `pxpipe warp`
 
