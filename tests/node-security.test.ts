@@ -91,7 +91,10 @@ async function startNode(extraEnv: Record<string, string> = {}): Promise<{
   child.stdout?.on('data', (b) => output.push(String(b)));
   child.stderr?.on('data', (b) => output.push(String(b)));
   await new Promise<void>((resolve, reject) => {
-    const deadline = setTimeout(() => reject(new Error(output.join(''))), 10_000);
+    // Booting a real tsx child takes ~2s alone but well past 10s when the rest
+    // of the suite is competing for the machine. The bound only has to catch a
+    // child that never starts.
+    const deadline = setTimeout(() => reject(new Error(output.join(''))), 30_000);
     const poll = () => {
       if (output.join('').includes('[pxpipe] listening on')) {
         clearTimeout(deadline);
