@@ -7,7 +7,11 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createWarpRuntime } from './warp/index.js';
+import {
+  createWarpHandlerSet,
+  createWarpRuntime,
+  isForwardProxyRequest,
+} from './warp/index.js';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -1333,7 +1337,25 @@ async function main(): Promise<void> {
   };
   const handle = createProxy(config);
 
+  // The same port also answers as a forward proxy, so one HTTPS_PROXY value in
+  // ~/.claude/settings.json covers every agent on the machine. Without this an
+  // agent can only be metered through ANTHROPIC_BASE_URL, which some of them
+  // read as "not talking to the real API" and use to disable features.
+  const warp = createWarpHandlerSet({
+    port: opts.port,
+    onDivert: (host, path, target) => {
+      console.error(`[pxpipe] warp: ${host}${path} → ${target}`);
+    },
+  });
+
   const server = createServer((req, res) => {
+    // Absolute-form target: this arrived through HTTPS_PROXY, not from the
+    // dashboard or a direct API client. Both handlers refuse non-loopback
+    // callers themselves.
+    if (isForwardProxyRequest(req.url)) {
+      warp.handlers.handleAbsoluteForm(req, res);
+      return;
+    }
     Promise.resolve()
       .then(async () => {
         // Local dashboard routes — handled BEFORE the proxy so they never hit
@@ -1368,6 +1390,8 @@ async function main(): Promise<void> {
       });
   });
 
+  server.on('connect', warp.handlers.handleConnect);
+
   // IPv6 literals need bracket notation to form a valid URL (http://[::1]:47821).
   const displayHost = opts.host.includes(':') ? `[${opts.host}]` : opts.host;
   const isLoopbackHost =
@@ -1383,6 +1407,8 @@ async function main(): Promise<void> {
       );
     }
     console.log(`[pxpipe] tracking events → ${opts.eventsFile}`);
+    console.log(`[pxpipe] forward proxy → HTTPS_PROXY=http://127.0.0.1:${opts.port}`);
+    console.log(`[pxpipe] forward proxy CA → NODE_EXTRA_CA_CERTS=${warp.ca.certPath}`);
     if (opts.captureErrorReqBody) {
       console.warn(
         `[pxpipe] PXPIPE_DEBUG_CAPTURE_4XX=1 — persisting full 4xx request and ` +

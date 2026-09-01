@@ -15,13 +15,14 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { accessSync, constants, existsSync } from 'node:fs';
+import { accessSync, constants } from 'node:fs';
 import { createServer } from 'node:http';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import { CertificateAuthority } from './ca.js';
-import { createWarpHandlers } from './connect.js';
+import { createWarpHandlers, type WarpHandlers } from './connect.js';
+import { planSpawn } from './launch.js';
 import { parseRoute, routeDestination, type Route } from './route.js';
 
 export interface WarpRuntimeOptions {
@@ -49,19 +50,50 @@ function defaultRoutes(port: number): Route[] {
   return [parseRoute(`api.anthropic.com/v1/messages*=http://127.0.0.1:${port}`)];
 }
 
-export function createWarpRuntime(options: WarpRuntimeOptions): WarpRuntime {
-  const { port } = options;
+export interface WarpHandlerSetOptions extends WarpRuntimeOptions {
+  /** Where the local CA is kept. Defaults to ~/.pxpipe; tests override it. */
+  caDir?: string;
+  /** Called for each diverted request, for logging. */
+  onDivert?: (host: string, path: string, target: string) => void;
+}
+
+export interface WarpHandlerSet {
+  handlers: WarpHandlers;
+  ca: CertificateAuthority;
+  routes: Route[];
+}
+
+/**
+ * The diversion machinery on its own, with no child process attached: routes,
+ * CA, and the two handlers. `warp` binds this to an ephemeral port that only
+ * one child can see; the main pxpipe server binds it to its own fixed port, so
+ * a single HTTPS_PROXY value works for every agent on the machine.
+ */
+export function createWarpHandlerSet(options: WarpHandlerSetOptions): WarpHandlerSet {
   // Explicit rules first: an operator route for a specific host:port must win
   // over anything built in.
   const routes = [
     ...(options.routes ?? []).map((spec) => parseRoute(spec)),
-    ...defaultRoutes(port),
+    ...defaultRoutes(options.port),
   ];
-  const ca = CertificateAuthority.loadOrCreate(join(homedir(), '.pxpipe'));
+  const ca = CertificateAuthority.loadOrCreate(options.caDir ?? join(homedir(), '.pxpipe'));
+  const handlers = createWarpHandlers({ routes, ca, onDivert: options.onDivert });
+  return { handlers, ca, routes };
+}
 
-  const handlers = createWarpHandlers({
-    routes,
-    ca,
+/**
+ * Absolute-form request targets (`GET http://host/path`) only ever reach a
+ * forward proxy; the dashboard and the API are addressed in origin form, so
+ * this is what separates the two roles on a shared port. A protocol-relative
+ * path is origin form and must not be claimed here.
+ */
+export function isForwardProxyRequest(url: string | undefined): boolean {
+  return url !== undefined && /^https?:\/\//i.test(url);
+}
+
+export function createWarpRuntime(options: WarpRuntimeOptions): WarpRuntime {
+  const { handlers, ca, routes } = createWarpHandlerSet({
+    ...options,
     // The child inherits this terminal and Claude Code draws a full-screen TUI
     // over it, so anything written after the child starts corrupts the display.
     // Keep the line when stdout is redirected (piping, CI, debugging); stay
@@ -83,78 +115,53 @@ export function createWarpRuntime(options: WarpRuntimeOptions): WarpRuntime {
    * Does the user's interactive shell consider this word an alias? Both zsh
    * ("cc is an alias for ...") and bash ("cc is aliased to ...") answer through
    * `type`, and only an interactive shell has sourced the rc file that defines
-   * one. Costs a single shell start at launch.
+   * one. Costs a single shell start at launch. cmd.exe has no equivalent — a
+   * doskey macro is not inherited by a child — so Windows never gets here.
    */
-  const shellAliasTarget = (name: string, shell: string, env: NodeJS.ProcessEnv): string | null => {
-    if (name.includes('/')) return null;
-    const probe = spawnSync(shell, ['-ic', `type -- ${name}`], { encoding: 'utf8', env });
+  const shellAliasTarget = (name: string, env: NodeJS.ProcessEnv): string | null => {
+    if (!name) return null;
+    const probe = spawnSync(env.SHELL || '/bin/sh', ['-ic', `type -- ${name}`], {
+      encoding: 'utf8',
+      env,
+    });
     const match = /\bis (?:an alias for|aliased to)\s+(.+)$/m.exec(probe.stdout ?? '');
     if (!match) return null;
     // bash wraps the expansion in `backtick quote'; zsh leaves it bare.
     return match[1]!.trim().replace(/^`/, '').replace(/'$/, '');
   };
 
-  /** Minimal `which`: is this bare name an executable on PATH? */
-  const whichSync = (name: string, env: NodeJS.ProcessEnv): boolean => {
-    if (name.includes('/')) return false; // a path, already handled by existsSync
-    for (const dir of (env.PATH ?? '').split(':')) {
-      if (!dir) continue;
-      try {
-        accessSync(join(dir, name), constants.X_OK);
-        return true;
-      } catch {
-        // not here, keep looking
-      }
-    }
-    return false;
-  };
-
-  /** Can this word actually be executed: a path that exists, or a name on PATH. */
-  const isRunnable = (word: string, env: NodeJS.ProcessEnv): boolean =>
-    word.includes('/') ? existsSync(word) : whichSync(word, env);
-
-  /** POSIX single-quote: safe for anything except a single quote itself. */
-  const shellQuote = (arg: string): string => `'${arg.replaceAll("'", `'\\''`)}'`;
-
   /**
    * Run the child, falling back to the user's interactive shell when the
-   * command is not an executable on PATH.
-   *
-   * spawn() is execvp, which only knows files. An alias like `cc` exists solely
-   * inside an interactive zsh, and `sh -c` will not find it either: aliases come
-   * from ~/.zshrc, which only an *interactive* shell sources. So the fallback is
-   * `$SHELL -ic`, which loads the rc file and expands the alias — including any
-   * env assignments baked into it, which no PATH lookup could have carried.
-   *
-   * Direct spawn stays the fast path: the shell is only involved when execvp
-   * would have failed outright.
+   * command is not an executable on PATH. {@link planSpawn} owns the decision
+   * and its platform rules; this only carries it out.
    */
   const spawnResolved = (command: string[], env: NodeJS.ProcessEnv) => {
-    const direct = { stdio: 'inherit', env } as const;
-    const shell = env.SHELL || '/bin/sh';
-    // An alias can shadow a real binary: `cc` is Apple clang on PATH and a
-    // Claude Code alias in the user's zsh, so PATH alone would silently run
-    // the wrong program. Ask the interactive shell what the word means first.
-    const alias = shellAliasTarget(command[0]!, shell, env);
-    // But a stale alias must not shadow a working binary either. An alias
-    // pointing at an uninstalled path (`claude` -> /opt/homebrew/bin/claude
-    // after a move to a node-managed install) would otherwise fail the launch
-    // outright, with a real claude sitting on PATH. An env-assignment prefix
-    // (`FOO=1 claude`) is unverifiable, so it is taken at its word.
-    const aliasWord = alias?.split(/\s+/)[0] ?? '';
-    const aliasUsable = alias !== null && (aliasWord.includes('=') || isRunnable(aliasWord, env));
-    if (alias !== null && !aliasUsable) {
-      console.error(`[pxpipe] warp: ignoring stale alias ${command[0]} → ${aliasWord} (not executable)`);
+    const isWin = process.platform === 'win32';
+    const plan = planSpawn(command, {
+      platform: process.platform,
+      env,
+      exists: (path) => {
+        try {
+          // X_OK is meaningless on Windows: it reports every readable file as
+          // executable, so PATHEXT is what actually decides there.
+          accessSync(path, isWin ? constants.F_OK : constants.X_OK);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      // Skipped on Windows by planSpawn, so the shell start is never paid for.
+      aliasTarget: (name) => shellAliasTarget(name, env),
+    });
+    if (plan.note) console.error(`[pxpipe] warp: ${plan.note}`);
+    if (plan.file !== command[0]) {
+      console.error(`[pxpipe] warp: resolving ${command[0]} → ${plan.file}`);
     }
-    if (!aliasUsable && isRunnable(command[0]!, env)) {
-      return spawn(command[0]!, command.slice(1), direct);
-    }
-    console.error(`[pxpipe] warp: resolving ${command[0]} via interactive shell fallback`);
-    // The command word is deliberately left unquoted: a shell only expands
-    // aliases on unquoted words, so quoting it would defeat the entire point of
-    // this fallback. Arguments are still quoted — they are data, never aliases.
-    const script = [command[0]!, ...command.slice(1).map(shellQuote)].join(' ');
-    return spawn(shell, ['-ic', script], direct);
+    return spawn(plan.file, plan.args, {
+      stdio: 'inherit',
+      env,
+      windowsVerbatimArguments: plan.windowsVerbatimArguments,
+    });
   };
 
   const spawnChild = (command: string[], proxyUrl: string): void => {
@@ -180,9 +187,16 @@ export function createWarpRuntime(options: WarpRuntimeOptions): WarpRuntime {
     // in the session (gcloud, gws, pip all fail verification — #245). They get
     // the bundle: our CA followed by the system roots.
     env.NODE_EXTRA_CA_CERTS = ca.certPath; // Node, and Bun-compiled binaries
-    env.SSL_CERT_FILE = ca.bundlePath; // OpenSSL: curl, Rust, Go with cgo
-    env.CURL_CA_BUNDLE = ca.bundlePath; // libcurl
-    env.REQUESTS_CA_BUNDLE = ca.bundlePath; // Python requests / httpx
+    // Windows keeps its roots in a registry store, not a PEM file, so there is
+    // nothing for the bundle to concatenate and #245 would be the permanent
+    // state rather than an edge case: a CA-only file here breaks curl and pip
+    // for the whole session. Leaving these unset costs only that those clients
+    // do not trust us — and they are not the ones being diverted.
+    if (ca.systemRootsPath) {
+      env.SSL_CERT_FILE = ca.bundlePath; // OpenSSL: curl, Rust, Go with cgo
+      env.CURL_CA_BUNDLE = ca.bundlePath; // libcurl
+      env.REQUESTS_CA_BUNDLE = ca.bundlePath; // Python requests / httpx
+    }
 
     const child = spawnResolved(command, env);
     // The child's proxy and CA point at this process. If warp dies for any
