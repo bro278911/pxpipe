@@ -87,12 +87,18 @@ const GPT_MODEL_CATALOG: ReadonlyArray<{ id: string; label: string }> = [
 ];
 
 const GROK_MODEL_CATALOG: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'grok-4.6', label: 'Grok 4.6' },
   { id: 'grok-4.5', label: 'Grok 4.5' },
 ];
 
 const GEMINI_MODEL_CATALOG: ReadonlyArray<{ id: string; label: string }> = [
+  // `gemini` is the family base (default on): covers 3.6/3.7/3.8, Pro, 4, 5 and
+  // whatever ships next. The per-version chips are for narrowing scope after
+  // opting the family off.
+  { id: 'gemini', label: 'Gemini (all versions)' },
   { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
   { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash' },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
 ];
 
 export function renderModelsFragment(
@@ -152,7 +158,7 @@ export function renderModelsFragment(
     `<div class="models">` +
     `<span class="models-label">轉圖的 Gemini 模型</span>` +
     geminiChips +
-    `<span class="hint">預設啟用 · 100/100 視覺讀取</span>` +
+    `<span class="hint">預設啟用 · 可點擊切換退出 · 100/100 視覺讀取</span>` +
     `</div>` +
     `<div class="models">` +
     `<span class="models-label">轉圖的 OpenAI Responses 模型</span>` +
