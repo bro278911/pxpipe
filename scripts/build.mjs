@@ -7,6 +7,7 @@ import { mkdir, rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 
 const require = createRequire(import.meta.url);
 
@@ -29,7 +30,9 @@ await mkdir(OUT, { recursive: true });
 // TS 7 no longer exports './bin/tsc', so resolve it via the bin field of the
 // (still-exported) package.json instead of a direct subpath require.
 const tsPkgPath = require.resolve('typescript/package.json');
-const tscBin = new URL(require('typescript/package.json').bin.tsc, `file://${tsPkgPath}`).pathname;
+// 用 path 而非 file:// URL 拼接：Windows 絕對路徑（含非 ASCII 目錄名）塞進
+// URL 會被當成 host + percent-encoded pathname，拼出 `D:\D:\%E6%A1%8C...`。
+const tscBin = join(dirname(tsPkgPath), require('typescript/package.json').bin.tsc);
 const tsc = spawnSync(process.execPath, [tscBin, '-p', 'tsconfig.json'], {
   stdio: 'inherit',
 });

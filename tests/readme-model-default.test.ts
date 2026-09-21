@@ -21,21 +21,22 @@ import { DEFAULT_MODEL_BASES } from '../src/core/applicability.js';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readme = fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
 
+// 此 fork 的 README 為繁體中文，「default」譯為「預設」，兩種寫法都接受。
 describe('README model scope', () => {
   it('states exactly one zero-config default', () => {
-    const matches = readme.match(/default `PXPIPE_MODELS=([^`]+)`/g) ?? [];
+    const matches = readme.match(/(?:default|預設) `PXPIPE_MODELS=([^`]+)`/g) ?? [];
     expect(matches).toHaveLength(1);
   });
 
   it('states the same default the runtime applies', () => {
-    const match = readme.match(/default `PXPIPE_MODELS=([^`]+)`/);
+    const match = readme.match(/(?:default|預設) `PXPIPE_MODELS=([^`]+)`/);
     expect(match).not.toBeNull();
     const documented = (match?.[1] ?? '').split(',').map((m) => m.trim()).filter(Boolean);
     expect(documented).toEqual([...DEFAULT_MODEL_BASES]);
   });
 
   it('does not present an opt-in model as part of the default', () => {
-    const match = readme.match(/default `PXPIPE_MODELS=([^`]+)`/);
+    const match = readme.match(/(?:default|預設) `PXPIPE_MODELS=([^`]+)`/);
     const documented = (match?.[1] ?? '').split(',').map((m) => m.trim());
     // Opus 5 is a supported profile but an explicit opt-in, and the difference is
     // the whole point of the recall caveat published next to it.

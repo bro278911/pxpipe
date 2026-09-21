@@ -33,7 +33,7 @@ let runtimeModelBases: readonly string[] | null = null;
  *  - GPT 5.5 — degrades on imaged history/context.
  *  - GPT 5.6 Sol — 98/100 production arithmetic, but 79/93 completed gist,
  *    4/15 completed guard confabulations, and 0/15 dense hex.
- *  - Grok 4.5 — native 14px: 100/100 arithmetic, 97/98 gist, 17/18 state; hex 0/15.
+ *  - Grok 4.5/4.6 — native 14px: 100/100 arithmetic, 97/98 gist, 17/18 state; hex 0/15.
  *  - Opus 5 — 2/15 exact recall on imaged context (DeepSWE v1.1 eval);
  *    task pass rate holds but dense recall does not.
  *  All remain available for explicit opt-in.
@@ -44,7 +44,12 @@ let runtimeModelBases: readonly string[] | null = null;
  *  The README and this list disagreed once already: Opus 5 was dropped here after
  *  a measured recall regression and stayed in the README's stated default, so a
  *  reader following the docs believed a model was being imaged that was not. */
-export const DEFAULT_MODEL_BASES = ['claude-fable-5', 'gemini-3.6-flash', 'gemini-3.7-flash'];
+/*  `gemini` is a family base: the prefix match below covers `gemini-3.6-flash`,
+ *  `gemini-4`, `gemini-pro`, ... so every Gemini id is on by default. Opting out
+ *  is the ordinary path — drop `gemini` from PXPIPE_MODELS or click the chip off —
+ *  which only works because the Google gate in proxy.ts/dashboard.ts consults
+ *  this list and nothing else. */
+export const DEFAULT_MODEL_BASES = ['claude-fable-5', 'gemini'];
 
 function falsey(v: string): boolean {
   return /^(0|false|no|off|none)$/i.test(v.trim());
@@ -52,7 +57,7 @@ function falsey(v: string): boolean {
 
 /** PXPIPE_MODELS env / built-in default, ignoring the runtime override. One CSV
  *  controls every family (Claude + GPT). Resolution (read per-call so scope flips LIVE):
- *  - unset or empty        → built-in default (Fable 5 + Gemini 3.6 Flash + Gemini 3.7 Flash)
+ *  - unset or empty        → built-in default (Fable 5 + every Gemini)
  *  - `off`/`0`/`false`/... → compress nothing
  *  - CSV of model bases    → exactly those families (e.g. `claude-fable-5,gpt-5.6-sol`) */
 function envOrDefaultBases(): string[] {

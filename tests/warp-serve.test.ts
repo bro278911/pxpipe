@@ -57,7 +57,8 @@ describe('createWarpHandlerSet', () => {
       routes: ['127.0.0.1:9090/v1/*=http://127.0.0.1:47821'],
       caDir,
     });
-    expect(routes).toHaveLength(2);
+    // 1 條 operator 路由 + 7 條內建路由（Anthropic 1 條、Gemini 6 條）
+    expect(routes).toHaveLength(8);
     expect(routeDestination(routes[0]!)).toBe('http://127.0.0.1:47821');
   });
 

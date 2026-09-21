@@ -174,12 +174,11 @@ npx pxpipe-proxy export --git
 <summary><strong>模型支援與渲染細節</strong></summary>
 
 - **`claude-opus-5`：** 逐字召回率弱於 Fable 5（逐字 **2/15 vs 13/15**），其他方面表現尚可（運算 100/100，never-stated 0/16），`/compact` 前達 **~4.7×** Context。建議 effort：**medium**。詳細說明：[FINDINGS.md](FINDINGS.md)。
-- **模型範圍：** 預設 `PXPIPE_MODELS=claude-fable-5,gemini-3.6-flash,gemini-3.7-flash`。Opus 5、Sol、GPT 5.5 及 **Grok** 均為選擇加入（儀表板選項或 `PXPIPE_MODELS`）。Sol 的精確模型 ID 仍然重要。同系列變體（如 `gpt-5.6-terra`）不繼承 Sol 的允許清單或渲染設定檔。`PXPIPE_MODELS=off` 可停用圖片化。其餘所有內容均以位元組一致方式傳送。在 GPT 路徑上，工具定義保持原生 JSON 格式，不使用 Anthropic `cache_control` 標記。Responses 歷史記錄壓縮可識別已完成的 `function_call`/`function_call_output` 配對，包括 OpenCode 的並行呼叫-輸出回合：只有舊的已關閉回合會以原子方式圖片化；每個開放呼叫及格式錯誤/孤兒狀態均保留為原生格式。基本設定檔保留最新六對已完成配對，允許 32 張圖片；Sol 保留一對，允許 64 張圖片；Grok 允許 24 張圖片。在驗證提供者的請求上限後，可以透過 `PXPIPE_GPT_HISTORY_MAX_IMAGES=48` 調整選擇加入的長會話覆蓋範圍（防禦性上限為 100）。
+- **模型範圍：** 預設 `PXPIPE_MODELS=claude-fable-5,gemini`。`gemini` 基底涵蓋所有 Gemini ID（3.6/3.7/3.8 Flash、Pro、4、5 及未來版本）；要將 Gemini 排除，從 `PXPIPE_MODELS` 移除 `gemini` 或關閉該選項的儀表板開關。Opus 5、Sol、GPT 5.5 及 **Grok** 均為選擇加入（儀表板選項或 `PXPIPE_MODELS`）。Sol 的精確模型 ID 仍然重要。同系列變體（如 `gpt-5.6-terra`）不繼承 Sol 的允許清單或渲染設定檔。`PXPIPE_MODELS=off` 可停用圖片化。其餘所有內容均以位元組一致方式傳送。在 GPT 路徑上，工具定義保持原生 JSON 格式，不使用 Anthropic `cache_control` 標記。Responses 歷史記錄壓縮可識別已完成的 `function_call`/`function_call_output` 配對，包括 OpenCode 的並行呼叫-輸出回合：只有舊的已關閉回合會以原子方式圖片化；每個開放呼叫及格式錯誤/孤兒狀態均保留為原生格式。基本設定檔保留最新六對已完成配對，允許 32 張圖片；Sol 保留一對，允許 64 張圖片；Grok 允許 24 張圖片。在驗證提供者的請求上限後，可以透過 `PXPIPE_GPT_HISTORY_MAX_IMAGES=48` 調整選擇加入的長會話覆蓋範圍（防禦性上限為 100）。
 - **逐模型渲染：** 選擇加入的 `gpt-5.6-sol` 和 Grok 使用 9×16 儲存格中的原生 14px JetBrains Mono 字形、84 欄及 764px 全寬條帶；Claude 保留其 312 欄、1568×728 的 5×8 Spleen 設定檔。這些設定根據精確的模型 ID 選擇，包括歷史記錄頁面和收益計算。已識別的 ID 可附在有界 Factsheet 中，且最近/開放的工具狀態保留為原生格式。
   [Sol 數據](eval/sol-profile/QUALITY_RESULTS.md) 和
   [設定檔證據](docs/MODEL_RENDER_PROFILES.md)。
-- **Grok 4.5（選擇加入）：** 原生 14px / 84 欄 / maxH 512（運算 100/100，gist 97/98）。預設關閉（密集十六進位仍為 0/15）。
-  以 `PXPIPE_MODELS=claude-fable-5,grok-4.5` 或儀表板選項啟用。
+- **Grok 4.5 / 4.6（選擇加入）：** 原生 14px / 84 欄 / maxH 512（運算 100/100，gist 97/98）。預設關閉（密集十六進位仍為 0/15）。歷史記錄採用混合折疊，因此工具回合之間的 Codex 助理訊息仍會圖片化。以 `PXPIPE_MODELS=claude-fable-5,grok-4.6` 或儀表板選項啟用。
   [eval/grok-density/QUALITY_RESULTS.md](eval/grok-density/QUALITY_RESULTS.md)。
 
 </details>
@@ -188,19 +187,21 @@ npx pxpipe-proxy export --git
 
 ### Model quality
 
-此矩陣同時呈現覆蓋範圍與分數。`—` 表示該模型未在該測試中執行，不代表零分。運算測試使用全新隨機數問題。Gist、state 與 never-stated 探針共用同一語料庫。Never-stated 為幻覺，越低越好。
+此矩陣同時呈現覆蓋範圍與分數。`—` 表示該模型未在該測試中執行，不代表零分。運算測試使用全新隨機數問題。Gist、state 與 never-stated 探針共用同一語料庫。Never-stated 為幻覺，越低越好。**量測幾何** 欄位標示該列分數量測時所用的渲染幾何；模型出貨的設定檔可能不同（Sol 與 Qwen 出貨時採用量測所用的 14px/84 幾何，但其廣泛套件的分數量測早於此設定檔）。
 
-| 模型 | 運算 (N=100) | gist (N=98) | state (N=18) | never-stated (N=16) | 密集十六進位 (N=15) | 設定檔來源與數據 |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| `claude-fable-5` | **100/100** | **98/98** | **18/18** | **0/16** | 13/15 | 2026 年 6 月生產設定檔：[運算 + 十六進位](FINDINGS.md)，[gist/state/guards](eval/gist-recall/) |
-| `google/gemini-3.6-flash`, `3.7-flash` | **100/100** | **98/98** | **18/18** | **0/16** | **14/15** | 目前已發佈設定檔：[品質結果](eval/gemini-profile/QUALITY_RESULTS.md) |
-| `claude-opus-5` | **100/100** | 94/98 | 17/18 | **0/16** | 2/15 | 目前設定檔：[運算](eval/gsm8k/)，[gist/state/guards](eval/gist-recall/)，[密集十六進位](eval/verbatim-15/) |
-| `gpt-5.6-sol` | 98/100 | 83/98 | 17/18 | 4/16 | 0/15 | 前期 5×8 完整套件；原生 14px 試驗：精確 7/8，0 幻覺，gist/guard 通過：[試驗](eval/sol-profile/README.md) |
-| `claude-opus-4-8` | 93/100 | 77/98 | **18/18** | **0/16** | 0/15 | 歷史設定檔：[運算](eval/gsm8k/)，[gist/state/guards](eval/gist-recall/)，[密集十六進位](eval/needle-haystack/) |
-| `grok-4.5` | **100/100** | **97/98** | 17/18 | **0/16** | 0/15 | 原生 14px/84 品質套件（即時設定檔）；[品質](eval/grok-density/QUALITY_RESULTS.md)，[native-sweep](eval/grok-density/native-sweep/RESULTS.md) |
-| `grok-4.6` high | **100/100** | **97/98** | 17/18 | **0/16** | 0/15 | 原生 14px/84，reasoning high；[品質](eval/grok-profile/QUALITY_RESULTS.md) |
-| `moonshotai/kimi-k3` | 79/100 | 84/98 | 15/18 | 1/16 | 0/15 | 通用 GPT 設定檔：[品質結果](eval/sol-profile/KIMI_K3_QUALITY_RESULTS.md) |
-| `qwen-3.8` (`@cf/qwen/qwen3.8-27b`) | 98/100 | 72/98 | 11/18 | **0/16** | 0/15 | 前期 5×8 完整套件（十六進位 0/15）；原生 14px 試驗：精確 8/8，0 幻覺，十六進位 11/15：[試驗與品質](eval/qwen-profile/QUALITY_RESULTS.md) |
+| 模型 | 量測幾何 | 運算 (N=100) | gist (N=98) | state (N=18) | never-stated (N=16) | 密集十六進位 (N=15) | 設定檔來源與數據 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `claude-fable-5` | Spleen 5×8, 312 cols（已出貨） | **100/100** | **98/98** | **18/18** | **0/16** | 13/15 | 2026 年 6 月生產設定檔：[運算 + 十六進位](FINDINGS.md)，[gist/state/guards](eval/gist-recall/) |
+| `claude-fable-5-1` | Spleen 5×8, 312 cols（沿用 Fable 5 設定檔） | **100/100** | 95/98 | **18/18** | **0/16** | 6/15 | 沿用 Fable 5 設定檔，本身無獨立幾何；3 個 gist 失分為圖片臂的否定旗標被答為 UNKNOWN（0 幻覺）。同日在相同測試工具／PNG 上的 Fable 5 對照組重現了 100/100 運算與 30/30 tier-2 gist，因此 gist/十六進位落差來自模型本身而非測試工具（十六進位對照組未重跑）：[運算](eval/sol-profile/)，[密集十六進位](eval/verbatim-15/)，[gist/state/guards](eval/gist-recall/) |
+| `google/gemini-3.6-flash`, `3.7-flash` | Spleen 5×8, 312 cols（已出貨） | **100/100** | **98/98** | **18/18** | **0/16** | **14/15** | 目前已發佈設定檔：[品質結果](eval/gemini-profile/QUALITY_RESULTS.md) |
+| `claude-opus-5` | Spleen 5×8, 312 cols（已出貨） | **100/100** | 94/98 | 17/18 | **0/16** | 2/15 | 目前設定檔：[運算](eval/gsm8k/)，[gist/state/guards](eval/gist-recall/)，[密集十六進位](eval/verbatim-15/) |
+| `gpt-5.6-sol` | Spleen 5×8, 152 cols；**出貨為 14px/84** | 98/100 | 83/98 | 17/18 | 4/16 | 0/15 | 廣泛套件早於出貨的 14px 設定檔；14px 試驗：精確 7/8，0 幻覺，gist/guard 通過：[試驗](eval/sol-profile/README.md) |
+| `claude-opus-4-8` | Spleen 5×8, 312 cols（歷史） | 93/100 | 77/98 | **18/18** | **0/16** | 0/15 | 歷史設定檔：[運算](eval/gsm8k/)，[gist/state/guards](eval/gist-recall/)，[密集十六進位](eval/needle-haystack/) |
+| `grok-4.5` | JetBrains Mono 14px, 84 cols（已出貨） | **100/100** | **97/98** | 17/18 | **0/16** | 0/15 | 原生 14px/84 品質套件（即時設定檔）；[品質](eval/grok-density/QUALITY_RESULTS.md)，[native-sweep](eval/grok-density/native-sweep/RESULTS.md) |
+| `grok-4.6` high | JetBrains Mono 14px, 84 cols（已出貨） | **100/100** | **97/98** | 17/18 | **0/16** | 0/15 | 原生 14px/84，reasoning high；[品質](eval/grok-profile/QUALITY_RESULTS.md) |
+| `moonshotai/kimi-k3` | Spleen 5×8, 152 cols（通用預設） | 79/100 | 84/98 | 15/18 | 1/16 | 0/15 | 通用 GPT 設定檔，本身無量測幾何：[品質結果](eval/sol-profile/KIMI_K3_QUALITY_RESULTS.md) |
+| `qwen-3.8` (`@cf/qwen/qwen3.8-27b`) | Spleen 5×8, 152 cols；**出貨為 14px/84** | 98/100 | 72/98 | 11/18 | **0/16** | 0/15 | 廣泛套件早於出貨的 14px 設定檔；14px 試驗：精確 8/8，0 幻覺，十六進位 11/15：[試驗與品質](eval/qwen-profile/QUALITY_RESULTS.md) |
+| `glm-5.3-flash` (`@cf/zai-org/glm-5.3-flash`) | Spleen 5×8, 152 cols（預設 fallback，無出貨設定檔） | 36/100 | 57/98 | 6/18 | **0/16** | 0/15 | 5×8 對 GLM 難以辨識（十六進位 0/15）；14px 試驗：十六進位 10/15，所有失誤皆為單字形幻覺，guards 0/16：[試驗與品質](eval/glm-profile/QUALITY_RESULTS.md) |
 
 ### Native-profile cost check
 
