@@ -79,6 +79,8 @@ export function renderToggleFragment(enabled: boolean): string {
 const MODEL_CATALOG: ReadonlyArray<{ id: string; label: string }> = [
   { id: 'claude-fable-5', label: 'Fable 5' },
   { id: 'claude-opus-5', label: 'Opus 5' },
+  { id: 'claude-opus-5-5', label: 'Opus 5.5' },
+  { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5' },
 ];
 
 const GPT_MODEL_CATALOG: ReadonlyArray<{ id: string; label: string }> = [
